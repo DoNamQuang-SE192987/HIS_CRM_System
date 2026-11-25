@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Used only by the Docker build. Shared build hosts (e.g. Render) often get
+  "429 Too Many Requests" from repo.maven.apache.org, so pull Maven Central
+  through Google's mirror instead.
+-->
+<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 https://maven.apache.org/xsd/settings-1.2.0.xsd">
+    <mirrors>
+        <mirror>
+            <id>google-maven-central</id>
+            <name>Google mirror of Maven Central</name>
+            <url>https://maven-central.storage-download.googleapis.com/maven2/</url>
+            <mirrorOf>central</mirrorOf>
+        </mirror>
+    </mirrors>
+</settings>

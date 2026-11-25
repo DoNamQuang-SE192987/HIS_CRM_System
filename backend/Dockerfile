@@ -2,12 +2,13 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
-# Cache dependencies first
-COPY pom.xml .
-RUN mvn -B -q dependency:go-offline
+# Pull Maven Central through a mirror (avoids 429 rate limits on shared build hosts)
+COPY maven-settings.xml /root/.m2/settings.xml
 
+COPY pom.xml .
 COPY src ./src
-RUN mvn -B -q clean package -DskipTests \
+RUN mvn -B clean package -DskipTests \
+        -Daether.transport.http.retryHandler.count=5 \
     && cp target/*.jar app.jar
 
 # ---------- Runtime stage ----------
