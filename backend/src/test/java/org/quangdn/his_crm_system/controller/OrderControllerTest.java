@@ -4,12 +4,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.quangdn.his_crm_system.entity.Customer;
 import org.quangdn.his_crm_system.entity.Product;
-import org.quangdn.his_crm_system.enums.StockTransactionType;
+import org.quangdn.his_crm_system.enums.InventoryRefType;
+import org.quangdn.his_crm_system.enums.InventoryTransactionType;
 import org.quangdn.his_crm_system.repository.InvoiceRepository;
 import org.quangdn.his_crm_system.repository.CustomerRepository;
 import org.quangdn.his_crm_system.repository.ProductRepository;
 import org.quangdn.his_crm_system.repository.SalesOrderRepository;
-import org.quangdn.his_crm_system.repository.StockTransactionRepository;
+import org.quangdn.his_crm_system.repository.InventoryTransactionRepository;
+import org.quangdn.his_crm_system.support.DatabaseCleaner;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -36,9 +38,10 @@ class OrderControllerTest {
     private static final String ROLE = "X-User-Role";
 
     @Autowired private MockMvc mvc;
+    @Autowired private DatabaseCleaner databaseCleaner;
     @Autowired private InvoiceRepository invoiceRepository;
     @Autowired private SalesOrderRepository orderRepository;
-    @Autowired private StockTransactionRepository stockTransactionRepository;
+    @Autowired private InventoryTransactionRepository inventoryTransactionRepository;
     @Autowired private ProductRepository productRepository;
     @Autowired private CustomerRepository customerRepository;
 
@@ -48,11 +51,7 @@ class OrderControllerTest {
 
     @BeforeEach
     void setUp() {
-        stockTransactionRepository.deleteAll();
-        invoiceRepository.deleteAll();
-        orderRepository.deleteAll();
-        productRepository.deleteAll();
-        customerRepository.deleteAll();
+        databaseCleaner.clean();
 
         customer = new Customer();
         customer.setName("Pacific Harvest Foods");
@@ -312,9 +311,12 @@ class OrderControllerTest {
         assertThat(stock(sauce)).isZero();
 
         String code = orderRepository.findById(id).orElseThrow().getCode();
-        var txs = stockTransactionRepository.findByReferenceOrderByIdAsc(code);
-        assertThat(txs).hasSize(2).allSatisfy(tx -> assertThat(tx.getType()).isEqualTo(StockTransactionType.OUT));
-        assertThat(txs).extracting(tx -> tx.getQuantity()).containsExactlyInAnyOrder(12, 3);
+        var txs = inventoryTransactionRepository.findByRefTypeAndRefIdOrderByIdAsc(InventoryRefType.SALES_ORDER, id);
+        assertThat(txs).hasSize(2).allSatisfy(tx -> {
+            assertThat(tx.getType()).isEqualTo(InventoryTransactionType.OUT);
+            assertThat(tx.getRefCode()).isEqualTo(code);
+        });
+        assertThat(txs).extracting(tx -> tx.getQuantity()).containsExactlyInAnyOrder(-12, -3);   // signed
         assertThat(txs).extracting(tx -> tx.getBalanceAfter()).containsExactlyInAnyOrder(88, 0);
 
         // shipping twice is rejected
@@ -339,7 +341,7 @@ class OrderControllerTest {
         // the line that *did* have stock was not deducted either
         assertThat(stock(noodle)).isEqualTo(100);
         assertThat(stock(sauce)).isEqualTo(3);
-        assertThat(stockTransactionRepository.count()).isZero();
+        assertThat(inventoryTransactionRepository.count()).isZero();
         mvc.perform(get("/orders/{id}", id).header(ROLE, "SALES")).andExpect(jsonPath("$.status").value("NEW"));
     }
 

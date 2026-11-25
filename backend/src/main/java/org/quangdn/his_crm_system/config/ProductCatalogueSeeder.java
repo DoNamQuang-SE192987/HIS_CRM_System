@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.quangdn.his_crm_system.entity.Product;
 import org.quangdn.his_crm_system.enums.PriceUnit;
 import org.quangdn.his_crm_system.repository.ProductRepository;
+import org.quangdn.his_crm_system.service.InventoryService;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -25,6 +26,7 @@ import java.util.List;
 public class ProductCatalogueSeeder implements ApplicationRunner {
 
     private final ProductRepository productRepository;
+    private final InventoryService inventoryService;
 
     @Override
     @Transactional
@@ -32,7 +34,7 @@ public class ProductCatalogueSeeder implements ApplicationRunner {
         if (productRepository.count() > 0) {
             return;
         }
-        List<Product> products = List.of(
+        List<Seed> seeds = List.of(
                 product("LNS217", "Cooling Herbal Tea (Nước mát Sài Gòn)", "Color Man", "320ml x 24", 24, "24.00", 120, 40),
                 product("LNS233", "Hillway Okinawa Milk Tea Fresh Pearl Cup", "Hillway", "70g x 48", 48, "81.12", 35, 40),
                 product("LNS_F2003", "Ginger & Cordyceps Tea", "Hoang Linh Biotech", "20 sticks x 35", 35, "109.15", 18, 20),
@@ -46,12 +48,18 @@ public class ProductCatalogueSeeder implements ApplicationRunner {
                 product("LNS246", "Sriracha Chilli Sauce 830g (29.27 oz)", "Nam Duong", "830g x 12", 12, "47.88", 140, 45),
                 product("LNS247", "Sriracha Chilli Sauce 480g (16.93 oz)", "Nam Duong", "480g x 12", 12, "29.88", 0, 45)
         );
-        productRepository.saveAll(products);
-        log.info("Seeded {} catalogue products", products.size());
+        // stock is never set directly: save with 0, then book the opening balance in the ledger
+        seeds.forEach(seed -> productRepository.save(seed.product()));
+        productRepository.flush();
+        seeds.forEach(seed -> inventoryService.recordOpeningBalance(seed.product(), seed.openingStock()));
+        log.info("Seeded {} catalogue products", seeds.size());
     }
 
-    private static Product product(String sku, String name, String brand, String packSize, int unitsPerCarton,
-                                   String price, int stockQty, int minStock) {
+    private record Seed(Product product, int openingStock) {
+    }
+
+    private static Seed product(String sku, String name, String brand, String packSize, int unitsPerCarton,
+                                String price, int stockQty, int minStock) {
         Product p = new Product();
         p.setSku(sku);
         p.setName(name);
@@ -61,9 +69,9 @@ public class ProductCatalogueSeeder implements ApplicationRunner {
         p.setUnitsPerCarton(unitsPerCarton);
         p.setPrice(new BigDecimal(price));
         p.setPriceUnit(PriceUnit.CARTON);
-        p.setStockQty(stockQty);
+        p.setStockQty(0);
         p.setMinStock(minStock);
         p.setActive(true);
-        return p;
+        return new Seed(p, stockQty);
     }
 }

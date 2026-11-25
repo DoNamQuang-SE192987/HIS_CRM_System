@@ -13,6 +13,7 @@ import org.quangdn.his_crm_system.exception.DuplicateResourceException;
 import org.quangdn.his_crm_system.exception.ResourceNotFoundException;
 import org.quangdn.his_crm_system.repository.ProductRepository;
 import org.quangdn.his_crm_system.repository.ProductSpecifications;
+import org.quangdn.his_crm_system.service.InventoryService;
 import org.quangdn.his_crm_system.service.ProductService;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -28,6 +29,7 @@ import java.util.Locale;
 public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
+    private final InventoryService inventoryService;
 
     @Override
     public PageResponse<ProductResponse> search(ProductFilter filter, int page, int size) {
@@ -56,10 +58,15 @@ public class ProductServiceImpl implements ProductService {
         product.setSku(sku);
         applyEditableFields(product, request.name(), request.brand(), request.packSize(), request.packDescription(),
                 request.unitsPerCarton(), request.price(), request.priceUnit(), request.minStock(), request.imageUrl());
-        product.setStockQty(request.stockQty() == null ? 0 : request.stockQty());
+        product.setStockQty(0);
         product.setActive(true);
+        productRepository.saveAndFlush(product);
 
-        return ProductResponse.from(productRepository.saveAndFlush(product));
+        // opening stock goes through the ledger like every other stock change
+        if (request.stockQty() != null) {
+            inventoryService.recordOpeningBalance(product, request.stockQty());
+        }
+        return ProductResponse.from(product);
     }
 
     @Transactional

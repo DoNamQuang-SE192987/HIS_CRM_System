@@ -5,11 +5,14 @@ import org.springframework.http.HttpStatus;
 
 import java.util.List;
 
-/** 409 - not enough stock to ship an order. {@code details} lists every short line, not just the first. */
+/** 409 - not enough stock. {@code details} lists every short product, not just the first. */
 public class InsufficientStockException extends AppException {
 
-    public InsufficientStockException(String orderCode, List<StockShortageResponse> shortages) {
-        super(HttpStatus.CONFLICT, "INSUFFICIENT_STOCK",
-                "Không đủ tồn kho để giao đơn " + orderCode, List.copyOf(shortages));
+    public InsufficientStockException(String message, List<StockShortageResponse> shortages) {
+        super(HttpStatus.CONFLICT, "INSUFFICIENT_STOCK", message, List.copyOf(shortages));
+    }
+
+    public static InsufficientStockException forOrder(String orderCode, List<StockShortageResponse> shortages) {
+        return new InsufficientStockException("Không đủ tồn kho để giao đơn " + orderCode, shortages);
     }
 }
