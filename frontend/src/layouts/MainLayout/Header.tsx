@@ -3,7 +3,6 @@
 import { Icon } from "@/components/ui";
 import { ROLE_LABELS, ROLES } from "@/constants";
 import type { Role } from "@/interfaces";
-import { API_BASE_URL } from "@/services/api-client";
 import { useAuthStore } from "@/stores";
 import { cn } from "@/utils";
 
@@ -13,17 +12,7 @@ export function Header() {
   const setRole = useAuthStore((state) => state.setRole);
 
   return (
-    <header className="print:hidden fixed top-0 left-[260px] right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 px-margin flex items-center justify-between gap-space-lg">
-      <div className="flex items-center gap-space-sm text-secondary font-label-sm text-label-sm min-w-0">
-        <span className="inline-flex items-center gap-space-xs px-space-md py-1 rounded-full bg-secondary-container text-on-secondary-container">
-          <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-          MVP 1.0 · UAT
-        </span>
-        <span className="hidden lg:inline truncate" title="Backend API">
-          API: {API_BASE_URL}
-        </span>
-      </div>
-
+    <header className="print:hidden fixed top-0 left-[260px] right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 px-margin flex items-center justify-end gap-space-lg">
       {/* Role switcher: stand-in for login during UAT - every API call sends this role. */}
       <div className="flex items-center gap-space-sm">
         <span className="font-label-sm text-label-sm text-secondary hidden md:inline">Acting as</span>

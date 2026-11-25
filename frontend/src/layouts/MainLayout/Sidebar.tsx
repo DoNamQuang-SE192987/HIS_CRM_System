@@ -1,10 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon } from "@/components/ui";
-import { APP_LOGO_URL, APP_NAME, APP_TAGLINE, ROLE_LABELS, SIDEBAR_NAV_ITEMS, can } from "@/constants";
+import { APP_NAME, APP_TAGLINE, ROLE_LABELS, SIDEBAR_NAV_ITEMS, can } from "@/constants";
 import { useAuthStore } from "@/stores";
 import { cn } from "@/utils";
 
@@ -24,14 +23,6 @@ export function Sidebar() {
       <div className="flex flex-col">
         {/* Brand */}
         <div className="h-16 px-space-lg flex items-center gap-space-sm bg-surface-container-lowest">
-          <Image
-            alt={`${APP_NAME} Logo`}
-            className="h-8 w-auto object-contain"
-            src={APP_LOGO_URL}
-            width={32}
-            height={32}
-            priority
-          />
           <div className="flex flex-col">
             <span className="font-headline-sm text-headline-sm text-on-surface leading-tight">{APP_NAME}</span>
             <span className="font-label-sm text-label-sm text-secondary tracking-wider uppercase">{APP_TAGLINE}</span>
