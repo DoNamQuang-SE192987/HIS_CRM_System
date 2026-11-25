@@ -1,0 +1,35 @@
+package org.quangdn.his_crm_system.dto.request;
+
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Null;
+import jakarta.validation.constraints.Size;
+import org.quangdn.his_crm_system.enums.PriceUnit;
+
+import java.math.BigDecimal;
+
+/**
+ * Body of {@code PUT /products/{id}} - full replacement of the editable fields.
+ * <p>
+ * {@code stockQty} is declared only so that sending it is rejected loudly (400) instead of being
+ * silently ignored: stock is changed exclusively through warehouse operations.
+ */
+public record ProductUpdateRequest(
+        @NotBlank @Size(max = 50) String sku,
+        @NotBlank @Size(max = 255) String name,
+        @Size(max = 100) String brand,
+        @Size(max = 100) String packSize,
+        @Size(max = 255) String packDescription,
+        @NotNull @Min(value = 1, message = "must be at least 1") Integer unitsPerCarton,
+        @NotNull @DecimalMin(value = "0", inclusive = false, message = "must be greater than 0")
+        @Digits(integer = 10, fraction = 2) BigDecimal price,
+        PriceUnit priceUnit,
+        @Min(0) Integer minStock,
+        @Size(max = 1000) String imageUrl,
+        @Null(message = "cannot be edited here; stock only changes through warehouse operations")
+        Integer stockQty
+) {
+}
