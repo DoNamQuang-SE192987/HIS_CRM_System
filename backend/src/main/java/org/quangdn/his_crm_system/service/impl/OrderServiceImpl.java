@@ -20,6 +20,7 @@ import org.quangdn.his_crm_system.exception.InsufficientStockException;
 import org.quangdn.his_crm_system.exception.InvalidStatusException;
 import org.quangdn.his_crm_system.exception.RequestValidationException;
 import org.quangdn.his_crm_system.exception.ResourceNotFoundException;
+import org.quangdn.his_crm_system.repository.InvoiceRepository;
 import org.quangdn.his_crm_system.repository.ProductRepository;
 import org.quangdn.his_crm_system.repository.SalesOrderRepository;
 import org.quangdn.his_crm_system.repository.SalesOrderSpecifications;
@@ -51,6 +52,7 @@ import java.util.stream.Collectors;
 public class OrderServiceImpl implements OrderService {
 
     private final SalesOrderRepository orderRepository;
+    private final InvoiceRepository invoiceRepository;
     private final ProductRepository productRepository;
     private final StockTransactionRepository stockTransactionRepository;
     private final ProductService productService;
@@ -70,7 +72,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderDetailResponse get(Long id) {
-        return OrderDetailResponse.from(findDetailOrThrow(id), today());
+        return toDetail(findDetailOrThrow(id));
     }
 
     @Transactional
@@ -132,7 +134,7 @@ public class OrderServiceImpl implements OrderService {
         order.setCode("SO-%d-%04d".formatted(order.getOrderDate().getYear(), order.getId()));
         orderRepository.flush();
 
-        return OrderDetailResponse.from(order, today());
+        return toDetail(order);
     }
 
     @Transactional
@@ -181,7 +183,7 @@ public class OrderServiceImpl implements OrderService {
         order.setShippedAt(Instant.now(clock));
         orderRepository.flush();
 
-        return OrderDetailResponse.from(order, today());
+        return toDetail(order);
     }
 
     @Transactional
@@ -195,10 +197,14 @@ public class OrderServiceImpl implements OrderService {
         order.setCanceledAt(Instant.now(clock));
         orderRepository.flush();
 
-        return OrderDetailResponse.from(order, today());
+        return toDetail(order);
     }
 
     // ---------------------------------------------------------------- helpers
+
+    private OrderDetailResponse toDetail(SalesOrder order) {
+        return OrderDetailResponse.from(order, invoiceRepository.findByOrderId(order.getId()).orElse(null), today());
+    }
 
     private SalesOrder findDetailOrThrow(Long id) {
         return orderRepository.findDetailById(id).orElseThrow(() -> new ResourceNotFoundException("Order", id));

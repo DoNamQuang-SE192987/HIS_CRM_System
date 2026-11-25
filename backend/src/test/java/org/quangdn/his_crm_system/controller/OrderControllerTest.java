@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.quangdn.his_crm_system.entity.Customer;
 import org.quangdn.his_crm_system.entity.Product;
 import org.quangdn.his_crm_system.enums.StockTransactionType;
+import org.quangdn.his_crm_system.repository.InvoiceRepository;
 import org.quangdn.his_crm_system.repository.CustomerRepository;
 import org.quangdn.his_crm_system.repository.ProductRepository;
 import org.quangdn.his_crm_system.repository.SalesOrderRepository;
@@ -35,6 +36,7 @@ class OrderControllerTest {
     private static final String ROLE = "X-User-Role";
 
     @Autowired private MockMvc mvc;
+    @Autowired private InvoiceRepository invoiceRepository;
     @Autowired private SalesOrderRepository orderRepository;
     @Autowired private StockTransactionRepository stockTransactionRepository;
     @Autowired private ProductRepository productRepository;
@@ -47,6 +49,7 @@ class OrderControllerTest {
     @BeforeEach
     void setUp() {
         stockTransactionRepository.deleteAll();
+        invoiceRepository.deleteAll();
         orderRepository.deleteAll();
         productRepository.deleteAll();
         customerRepository.deleteAll();
@@ -99,7 +102,6 @@ class OrderControllerTest {
                 """.formatted(noodle.getId(), sauce.getId()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.code", matchesPattern("SO-\\d{4}-\\d{4}")))
-                .andExpect(jsonPath("$.invoiceNo", matchesPattern("INV-\\d{4}-\\d{4}")))
                 .andExpect(jsonPath("$.status").value("NEW"))
                 .andExpect(jsonPath("$.customer.name").value("Walmart Marketplace"))
                 .andExpect(jsonPath("$.customer.marketplaceChannel").value("WALMART"))
@@ -108,7 +110,8 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.items[0].lineTotal").value(358.80))
                 .andExpect(jsonPath("$.items[1].lineTotal").value(95.76))
                 .andExpect(jsonPath("$.total").value(454.56))
-                .andExpect(jsonPath("$.paymentTermDays").value(0));
+                .andExpect(jsonPath("$.customer.paymentTermDays").value(0))
+                .andExpect(jsonPath("$.invoice").doesNotExist());
 
         // changing the catalogue price later must not change the order
         noodle.setPrice(new BigDecimal("99.00"));
@@ -124,7 +127,7 @@ class OrderControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.shipTo").value("1420 Harbor Blvd, Oakland, CA"))
                 .andExpect(jsonPath("$.recipientName").value("Pacific Harvest Foods"))
-                .andExpect(jsonPath("$.paymentTermDays").value(30))
+                .andExpect(jsonPath("$.customer.paymentTermDays").value(30))
                 .andExpect(jsonPath("$.externalOrderNo").doesNotExist());
     }
 
