@@ -1,125 +1,122 @@
-import { FulfillmentCutoffBanner } from "@/components/dashboard/FulfillmentCutoffBanner";
+"use client";
+
+import Link from "next/link";
 import { KpiCard } from "@/components/dashboard/KpiCard";
-import { LowStockAlertCard } from "@/components/dashboard/LowStockAlertCard";
-import { RecentOrdersCard } from "@/components/dashboard/RecentOrdersCard";
-import { Icon } from "@/components/ui";
-import type { DashboardStats, Order, Product } from "@/interfaces";
-import { formatCurrencyWhole } from "@/utils";
+import { LowStockCard } from "@/components/dashboard/LowStockCard";
+import { ErrorState, LoadingState, PageHeader } from "@/components/common";
+import { OrdersMiniTable } from "@/components/orders/OrdersMiniTable";
+import { BUTTON, CARD, Icon } from "@/components/ui";
+import { ROUTES } from "@/constants";
+import { useApi } from "@/hooks";
+import { dashboardService } from "@/services";
+import { cn, formatCurrencyWhole, formatDateTime } from "@/utils";
 
-interface DashboardPageProps {
-  stats: DashboardStats;
-  lowStockProducts: Product[];
-  recentOrders: Order[];
-}
-
-export function DashboardPage({ stats, lowStockProducts, recentOrders }: DashboardPageProps) {
-  const ordersDelta = stats.ordersToday - stats.ordersYesterday;
+export function DashboardPage() {
+  const { data, error, loading, reload } = useApi(() => dashboardService.summary(), []);
 
   return (
     <div className="px-margin py-space-lg flex flex-col gap-space-lg max-w-[1440px] mx-auto w-full">
-      {/* Title & actions */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-sm pb-space-xs">
-        <div className="flex flex-col">
-          <div className="flex items-center gap-space-sm">
-            <h1 className="font-headline-lg text-headline-lg text-on-surface tracking-tight">
-              Operations Dashboard
-            </h1>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-label-sm text-label-sm font-semibold">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
-              Real-time
-            </span>
-          </div>
-          <p className="font-body-md text-body-md text-secondary mt-0.5">
-            Daily order fulfillment and inventory health across primary commercial channels
-          </p>
-        </div>
-        <div className="flex items-center gap-space-md self-start md:self-auto">
-          <div className="flex items-center gap-space-xs text-secondary font-label-md text-label-md px-3 py-1.5 rounded-lg bg-surface-container-low shadow-sm">
-            <Icon name="schedule" className="text-[16px] text-outline" />
-            <span>Updated: {stats.updatedAtLabel}</span>
-          </div>
-          <button
-            className="h-[38px] px-space-md rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-medium hover:bg-primary transition-colors shadow-sm flex items-center gap-space-xs"
-            type="button"
-          >
-            <Icon name="add" className="text-[18px]" />
-            <span>New Sales Order</span>
-          </button>
-        </div>
-      </div>
-
-      {/* KPI cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter">
-        <KpiCard
-          label="Orders Today"
-          icon="shopping_cart"
-          value={stats.ordersToday}
-          footer={
-            <div className="flex items-center gap-1.5 font-label-sm text-label-sm">
-              <span className="inline-flex items-center text-primary font-semibold">
-                <Icon name={ordersDelta >= 0 ? "trending_up" : "trending_down"} className="text-[15px]" />
-                {ordersDelta >= 0 ? `+${ordersDelta}` : ordersDelta}
+      <PageHeader
+        eyebrow="Manager overview"
+        title="Operations Dashboard"
+        subtitle="Today's orders, shipping backlog, revenue and stock health"
+        actions={
+          <>
+            {data && (
+              <span className="flex items-center gap-space-xs text-secondary font-label-md text-label-md px-3 py-1.5 rounded-lg bg-surface-container-low">
+                <Icon name="schedule" className="text-[16px] text-outline" />
+                Updated {formatDateTime(data.generatedAt)}
               </span>
-              <span className="text-secondary font-normal">
-                vs yesterday ({stats.ordersYesterday})
-              </span>
-            </div>
-          }
-        />
-        <KpiCard
-          label="Orders To Ship"
-          icon="pending_actions"
-          iconClassName="bg-surface-container text-tertiary"
-          value={stats.ordersToShip.wholesale + stats.ordersToShip.ecommerce}
-          footer={
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-fixed font-label-sm text-label-sm font-medium">
-                {stats.ordersToShip.wholesale} wholesale · {stats.ordersToShip.ecommerce} e-comm
-              </span>
-            </div>
-          }
-        />
-        <KpiCard
-          label="Low-Stock Products"
-          icon="warning"
-          iconClassName="bg-error-container text-error"
-          valueClassName="text-error"
-          value={lowStockProducts.length}
-          footer={
-            <div className="flex items-center gap-1.5">
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-label-sm text-label-sm font-semibold">
-                <span className="w-1.5 h-1.5 rounded-full bg-error" />
-                Action required
-              </span>
-            </div>
-          }
-        />
-        <KpiCard
-          label="Revenue This Month"
-          icon="payments"
-          iconClassName="bg-surface-container text-primary-container"
-          value={formatCurrencyWhole(stats.revenueThisMonth)}
-          footer={
-            <div className="flex items-center gap-1.5 font-label-sm text-label-sm">
-              <span className="text-secondary font-normal">USD · Gross food sales</span>
-            </div>
-          }
-        />
-      </div>
-
-      {/* Low stock + recent orders */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-gutter items-start">
-        <LowStockAlertCard
-          products={lowStockProducts}
-          supplierLeadTimeDays={stats.supplierLeadTimeDays}
-        />
-        <RecentOrdersCard orders={recentOrders} />
-      </div>
-
-      <FulfillmentCutoffBanner
-        cutoffTime={stats.fulfillmentCutoff.time}
-        remaining={stats.fulfillmentCutoff.remaining}
+            )}
+            <button className={BUTTON.secondary} type="button" onClick={reload} disabled={loading}>
+              <Icon name="refresh" className={cn("text-[18px]", loading && "animate-spin")} />
+              Refresh
+            </button>
+          </>
+        }
       />
+
+      {error ? (
+        <ErrorState error={error} onRetry={reload} />
+      ) : !data ? (
+        <LoadingState />
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter">
+            <KpiCard
+              label="Orders Today"
+              icon="shopping_cart"
+              value={data.ordersToday}
+              footer={<span className="font-label-sm text-label-sm text-secondary">Excluding canceled orders</span>}
+            />
+            <KpiCard
+              label="Orders To Ship"
+              icon="pending_actions"
+              iconClassName="bg-surface-container text-tertiary"
+              value={data.ordersToShip}
+              footer={
+                <span className="inline-flex w-fit items-center px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-fixed font-label-sm text-label-sm font-medium">
+                  {data.ordersToShipByChannel.WHOLESALE} wholesale · {data.ordersToShipByChannel.WALMART} Walmart ·{" "}
+                  {data.ordersToShipByChannel.AMAZON} Amazon
+                </span>
+              }
+            />
+            <KpiCard
+              label="Revenue This Month"
+              icon="payments"
+              iconClassName="bg-surface-container text-primary-container"
+              value={formatCurrencyWhole(data.revenueThisMonth)}
+              footer={<span className="font-label-sm text-label-sm text-secondary">From shipped orders · USD</span>}
+            />
+            <KpiCard
+              label="Low-Stock Products"
+              icon="warning"
+              iconClassName="bg-error-container text-error"
+              valueClassName={data.lowStockCount > 0 ? "text-error" : "text-on-surface"}
+              value={data.lowStockCount}
+              footer={
+                <span className="font-label-sm text-label-sm text-secondary">Below minimum or out of stock</span>
+              }
+            />
+          </div>
+
+          {data.overdueCount > 0 && (
+            <div className={cn(CARD, "overflow-hidden flex flex-col ring-1 ring-error/30")}>
+              <div className="px-6 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-space-sm">
+                  <Icon name="alarm" className="text-error text-[22px]" />
+                  <h2 className="font-headline-sm text-headline-sm text-on-surface font-semibold">Overdue Orders</h2>
+                  <span className="px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-label-sm text-label-sm font-semibold">
+                    {data.overdueCount}
+                  </span>
+                </div>
+                <span className="font-label-sm text-label-sm text-secondary">
+                  Still NEW after the marketplace ship-by date
+                </span>
+              </div>
+              <OrdersMiniTable orders={data.overdueOrders} variant="overdue" emptyText="No overdue orders" />
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-gutter items-start">
+            <LowStockCard products={data.lowStockProducts} totalCount={data.lowStockCount} />
+
+            <div className={cn(CARD, "overflow-hidden flex flex-col")}>
+              <div className="px-6 py-4 flex items-center justify-between">
+                <h2 className="font-headline-sm text-headline-sm text-on-surface font-semibold">Recent Orders</h2>
+                <Link
+                  className="font-label-md text-label-md text-primary font-medium hover:underline flex items-center gap-1"
+                  href={ROUTES.orders}
+                >
+                  View all orders
+                  <Icon name="arrow_forward" className="text-[16px]" />
+                </Link>
+              </div>
+              <OrdersMiniTable orders={data.recentOrders} emptyText="No orders yet" />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

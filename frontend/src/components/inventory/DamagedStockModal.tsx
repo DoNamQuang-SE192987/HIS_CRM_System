@@ -1,97 +1,100 @@
 "use client";
 
-import type { FormEvent } from "react";
-import { FORM_CONTROL_CLASS, FormField, Modal } from "@/components/ui";
-import { DAMAGE_CAUSES } from "@/constants";
-import type { DamagedStockPayload, Product } from "@/interfaces";
-import { getProductLabel, getStockStatus } from "@/utils";
+import { useState, type FormEvent } from "react";
+import { ErrorBanner } from "@/components/common";
+import { BUTTON, FORM_CONTROL_CLASS, FormField, Modal, Select } from "@/components/ui";
+import { DAMAGE_REASONS } from "@/constants";
+import type { InventoryItem } from "@/interfaces";
+import { inventoryService } from "@/services";
+import { toast } from "@/stores";
+import { fieldErrorsOf } from "@/utils";
 
 interface DamagedStockModalProps {
-  isOpen: boolean;
+  products: InventoryItem[];
   onClose: () => void;
-  products: Product[];
-  onSubmit: (payload: DamagedStockPayload) => void;
+  onDone: () => void;
 }
 
-export function DamagedStockModal({ isOpen, onClose, products, onSubmit }: DamagedStockModalProps) {
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+/** Write off broken / expired goods (hàng huỷ). Cannot exceed current stock. */
+export function DamagedStockModal({ products, onClose, onDone }: DamagedStockModalProps) {
+  const [error, setError] = useState<unknown>(null);
+  const [saving, setSaving] = useState(false);
+  const [reason, setReason] = useState("");
+  const fieldErrors = fieldErrorsOf(error);
+  // Only products that still have something to write off.
+  const selectable = products.filter((p) => p.stockQty > 0);
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    onSubmit({
-      sku: String(data.get("sku")),
-      quantity: Number(data.get("quantity")),
-      reference: String(data.get("reference")),
-      cause: String(data.get("cause")),
-    });
-    onClose();
+    setSaving(true);
+    setError(null);
+    try {
+      const tx = await inventoryService.recordDamaged({
+        productId: Number(data.get("productId")),
+        qty: Number(data.get("qty")),
+        reason: reason.trim(),
+      });
+      toast.success(`${tx.quantity} ${tx.sku} written off — stock now ${tx.balanceAfter}`);
+      onDone();
+    } catch (err) {
+      setError(err);
+    } finally {
+      setSaving(false);
+    }
   };
-
-  // Damage can only be recorded against products that still have stock.
-  const selectableProducts = products.filter((product) => getStockStatus(product) !== "out_of_stock");
 
   return (
     <Modal
-      isOpen={isOpen}
+      isOpen
       onClose={onClose}
-      title="Record Damaged / Spoiled Stock"
-      subtitle="Logs shrinkage and writes down inventory on hand"
+      title="Record Damaged Goods"
+      subtitle="Recorded as DAMAGED in the stock ledger"
       icon="warning"
       iconClassName="bg-error text-on-error"
       headerClassName="bg-error-container/30"
     >
-      <form className="p-space-lg flex flex-col gap-space-md" onSubmit={handleSubmit}>
-        <FormField label="Affected Product SKU" htmlFor="damaged-sku">
-          <select id="damaged-sku" name="sku" className={FORM_CONTROL_CLASS}>
-            {selectableProducts.map((product) => (
-              <option key={product.sku} value={product.sku}>
-                {product.sku} — {getProductLabel(product)}
+      <form className="p-space-lg flex flex-col gap-space-md" onSubmit={submit} noValidate>
+        {error && !Object.keys(fieldErrors).length ? <ErrorBanner error={error} /> : null}
+        <FormField label="Product" htmlFor="dmg-product" required error={fieldErrors.productId}>
+          <Select id="dmg-product" name="productId">
+            {selectable.map((p) => (
+              <option key={p.productId} value={p.productId}>
+                {p.sku} — {p.name} (in stock {p.stockQty})
               </option>
             ))}
-          </select>
+          </Select>
         </FormField>
-        <div className="grid grid-cols-2 gap-space-md">
-          <FormField label="Quantity Damaged" htmlFor="damaged-qty">
-            <input
-              id="damaged-qty"
-              name="quantity"
-              className={FORM_CONTROL_CLASS}
-              min={1}
-              placeholder="e.g. 2"
-              required
-              type="number"
-            />
-          </FormField>
-          <FormField label="Damage Reference #" htmlFor="damaged-ref">
-            <input
-              id="damaged-ref"
-              name="reference"
-              className={FORM_CONTROL_CLASS}
-              placeholder="REF-DMG-XXXX"
-              required
-              type="text"
-            />
-          </FormField>
+        <FormField label="Quantity damaged" htmlFor="dmg-qty" required error={fieldErrors.qty}>
+          <input id="dmg-qty" name="qty" type="number" min={1} className={FORM_CONTROL_CLASS} placeholder="e.g. 2" />
+        </FormField>
+        <FormField label="Reason" htmlFor="dmg-reason" required error={fieldErrors.reason}>
+          <input
+            id="dmg-reason"
+            className={FORM_CONTROL_CLASS}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Vỡ chai, hết hạn..."
+          />
+        </FormField>
+        <div className="flex flex-wrap gap-space-xs -mt-space-xs">
+          {DAMAGE_REASONS.map((item) => (
+            <button
+              key={item}
+              type="button"
+              className="px-2.5 py-1 rounded-full bg-surface-container-low hover:bg-surface-container-high font-label-sm text-label-sm text-on-surface"
+              onClick={() => setReason(item)}
+            >
+              {item}
+            </button>
+          ))}
         </div>
-        <FormField label="Cause / Incident Details" htmlFor="damaged-cause">
-          <select id="damaged-cause" name="cause" className={FORM_CONTROL_CLASS}>
-            {DAMAGE_CAUSES.map((cause) => (
-              <option key={cause}>{cause}</option>
-            ))}
-          </select>
-        </FormField>
-        <div className="flex items-center justify-end gap-space-sm pt-space-md">
-          <button
-            className="h-[38px] px-space-md rounded-lg text-secondary hover:text-on-surface font-label-md text-label-md"
-            type="button"
-            onClick={onClose}
-          >
+        <div className="flex justify-end gap-space-sm pt-space-sm">
+          <button className={BUTTON.ghost} type="button" onClick={onClose}>
             Cancel
           </button>
-          <button
-            className="h-[38px] px-space-md rounded-lg bg-error text-on-error font-label-md text-label-md hover:opacity-95 transition-opacity"
-            type="submit"
-          >
-            Log Damaged Stock
+          <button className={BUTTON.dangerSolid} type="submit" disabled={saving || selectable.length === 0}>
+            {saving ? "Saving..." : "Write off stock"}
           </button>
         </div>
       </form>
