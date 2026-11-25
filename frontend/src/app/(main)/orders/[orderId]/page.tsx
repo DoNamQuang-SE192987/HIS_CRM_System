@@ -1,22 +1,15 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { orderService } from "@/services";
+import { Suspense } from "react";
+import { LoadingState } from "@/components/common";
 import { OrderDetailPage } from "@/views/orders/OrderDetailPage";
 
-export async function generateStaticParams() {
-  const ids = await orderService.getOrderIdsWithDetail();
-  return ids.map((orderId) => ({ orderId }));
-}
+export const metadata: Metadata = { title: "Order" };
 
-export async function generateMetadata({ params }: PageProps<"/orders/[orderId]">): Promise<Metadata> {
-  const { orderId } = await params;
-  return { title: `Order ${orderId}` };
-}
-
-export default async function Page({ params }: PageProps<"/orders/[orderId]">) {
-  const { orderId } = await params;
-  const order = await orderService.getOrderById(orderId);
-  if (!order) notFound();
-
-  return <OrderDetailPage order={order} />;
+// The order id is only known at request time -> the client view reads it with useParams() inside Suspense.
+export default function Page() {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <OrderDetailPage />
+    </Suspense>
+  );
 }

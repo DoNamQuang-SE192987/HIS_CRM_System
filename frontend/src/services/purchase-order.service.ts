@@ -1,30 +1,26 @@
-import {
-  PURCHASE_ORDER_DRAFT_MOCK,
-  PURCHASE_ORDER_STATS_MOCK,
-  PURCHASE_ORDERS_MOCK,
-  SUPPLIERS_MOCK,
-} from "@/constants/mock-data";
 import type {
-  PurchaseOrder,
-  PurchaseOrderDraft,
-  PurchaseOrderStats,
+  Page,
+  PurchaseOrderCreatePayload,
+  PurchaseOrderDetail,
+  PurchaseOrderStatus,
+  PurchaseOrderSummary,
   Supplier,
 } from "@/interfaces";
+import { apiRequest } from "./api-client";
+
+export const supplierService = {
+  list: () => apiRequest<Supplier[]>("/suppliers"),
+};
 
 export const purchaseOrderService = {
-  async getPurchaseOrders(): Promise<PurchaseOrder[]> {
-    return PURCHASE_ORDERS_MOCK;
-  },
+  list: (status?: PurchaseOrderStatus, page = 1, size = 20) =>
+    apiRequest<Page<PurchaseOrderSummary>>("/purchase-orders", { query: { status, page, size } }),
 
-  async getSuppliers(): Promise<Supplier[]> {
-    return SUPPLIERS_MOCK;
-  },
+  get: (id: number) => apiRequest<PurchaseOrderDetail>(`/purchase-orders/${id}`),
 
-  async getDraft(): Promise<PurchaseOrderDraft> {
-    return PURCHASE_ORDER_DRAFT_MOCK;
-  },
+  create: (payload: PurchaseOrderCreatePayload) =>
+    apiRequest<PurchaseOrderDetail>("/purchase-orders", { method: "POST", body: payload }),
 
-  async getStats(): Promise<PurchaseOrderStats> {
-    return PURCHASE_ORDER_STATS_MOCK;
-  },
+  /** Adds stock; a second call returns 409 INVALID_STATUS. */
+  receive: (id: number) => apiRequest<PurchaseOrderDetail>(`/purchase-orders/${id}/receive`, { method: "POST" }),
 };

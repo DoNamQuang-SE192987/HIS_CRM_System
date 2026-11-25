@@ -1,18 +1,23 @@
-import { STOCK_MOVEMENTS_MOCK } from "@/constants/mock-data";
-import type { DamagedStockPayload, StockInPayload, StockMovement } from "@/interfaces";
+import type {
+  DamagedStockPayload,
+  InventoryItem,
+  InventoryTransaction,
+  InventoryTransactionQuery,
+  Page,
+  StockInPayload,
+  StockStatus,
+} from "@/interfaces";
+import { apiRequest } from "./api-client";
 
 export const inventoryService = {
-  async getStockMovements(): Promise<StockMovement[]> {
-    return STOCK_MOVEMENTS_MOCK;
-  },
+  list: (status?: StockStatus, q?: string) => apiRequest<InventoryItem[]>("/inventory", { query: { status, q } }),
 
-  async stockIn(payload: StockInPayload): Promise<void> {
-    // TODO: POST /inventory/stock-in
-    console.info("[inventoryService] stockIn", payload);
-  },
+  transactions: (query: InventoryTransactionQuery = {}) =>
+    apiRequest<Page<InventoryTransaction>>("/inventory/transactions", { query: { ...query } }),
 
-  async recordDamaged(payload: DamagedStockPayload): Promise<void> {
-    // TODO: POST /inventory/damaged
-    console.info("[inventoryService] recordDamaged", payload);
-  },
+  stockIn: (payload: StockInPayload) =>
+    apiRequest<InventoryTransaction>("/inventory/stock-in", { method: "POST", body: payload }),
+
+  recordDamaged: (payload: DamagedStockPayload) =>
+    apiRequest<InventoryTransaction>("/inventory/damaged", { method: "POST", body: payload }),
 };

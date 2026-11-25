@@ -1,35 +1,58 @@
-export type PurchaseOrderStatus = "draft" | "ordered" | "received";
+import type { StockStatus } from "./product.interface";
+
+export type PurchaseOrderStatus = "ORDERED" | "RECEIVED";
 
 export interface Supplier {
-  id: string;
+  id: number;
   name: string;
-  description: string;
+  contactName: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  leadTimeDays: number | null;
 }
 
-export interface PurchaseOrder {
-  id: string;
-  supplierId: string;
-  orderDate: string;
+export interface PurchaseOrderSummary {
+  id: number;
+  code: string;
+  supplierId: number;
+  supplierName: string;
   status: PurchaseOrderStatus;
-  total: number;
+  orderDate: string;
+  expectedDate: string | null;
+  lineCount: number;
+  totalQty: number;
+  receivedAt: string | null;
 }
 
-export interface PurchaseOrderLine {
+export interface PurchaseOrderItem {
+  id: number;
+  productId: number;
   sku: string;
   productName: string;
-  quantity: number;
-  unitCost: number;
+  qty: number;
+  currentStock: number;
+  minStock: number;
+  stockStatus: StockStatus;
 }
 
-export interface PurchaseOrderDraft {
-  id: string;
-  supplierId: string;
-  expectedDeliveryDate: string;
-  receivingSurcharge: number;
-  lines: PurchaseOrderLine[];
+export interface PurchaseOrderDetail {
+  id: number;
+  code: string;
+  supplier: Supplier;
+  status: PurchaseOrderStatus;
+  orderDate: string;
+  expectedDate: string | null;
+  note: string | null;
+  items: PurchaseOrderItem[];
+  totalQty: number;
+  createdAt: string;
+  receivedAt: string | null;
 }
 
-export interface PurchaseOrderStats {
-  awaitingInbound: number;
-  monthlyRestock: number;
+export interface PurchaseOrderCreatePayload {
+  supplierId: number;
+  expectedDate?: string;
+  note?: string;
+  items: { productId: number; qty: number }[];
 }

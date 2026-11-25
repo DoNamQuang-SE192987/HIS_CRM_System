@@ -1,31 +1,56 @@
-import type { StockUnit } from "./common.interface";
+import type { PriceUnit, StockStatus } from "./product.interface";
 
-export type StockMovementType = "IN" | "OUT" | "DAMAGED";
+export type InventoryTransactionType = "IN" | "OUT" | "DAMAGED";
+export type InventoryRefType = "SALES_ORDER" | "PURCHASE_ORDER" | "MANUAL" | "OPENING_BALANCE";
 
-export interface StockMovement {
-  id: string;
-  occurredAt: string;
+export interface InventoryItem {
+  productId: number;
+  sku: string;
+  name: string;
+  brand: string | null;
+  packSize: string | null;
+  unit: PriceUnit;
+  stockQty: number;
+  minStock: number;
+  status: StockStatus;
+  /** Units missing to reach minStock - reorder hint. */
+  shortage: number;
+  active: boolean;
+}
+
+export interface InventoryTransaction {
+  id: number;
+  createdAt: string;
+  productId: number;
   sku: string;
   productName: string;
-  type: StockMovementType;
-  /** Signed quantity: positive for inbound, negative for outbound */
+  type: InventoryTransactionType;
+  /** Signed: +IN, -OUT, -DAMAGED */
   quantity: number;
-  unit: StockUnit;
-  reference: string;
-  /** `null` when the movement was created automatically by the OMS */
-  user: { name: string; initials: string } | null;
+  balanceAfter: number;
+  refType: InventoryRefType;
+  refId: number | null;
+  refCode: string | null;
+  note: string | null;
+}
+
+export interface InventoryTransactionQuery {
+  productId?: number;
+  type?: InventoryTransactionType;
+  from?: string;
+  to?: string;
+  page?: number;
+  size?: number;
 }
 
 export interface StockInPayload {
-  sku: string;
-  quantity: number;
-  poReference: string;
-  notes?: string;
+  productId: number;
+  qty: number;
+  note?: string;
 }
 
 export interface DamagedStockPayload {
-  sku: string;
-  quantity: number;
-  reference: string;
-  cause: string;
+  productId: number;
+  qty: number;
+  reason: string;
 }

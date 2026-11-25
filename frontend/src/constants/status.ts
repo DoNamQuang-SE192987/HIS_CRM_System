@@ -1,8 +1,9 @@
 import type {
+  InventoryRefType,
+  InventoryTransactionType,
   OrderStatus,
   PurchaseOrderStatus,
   SalesChannel,
-  StockMovementType,
   StockStatus,
 } from "@/interfaces";
 
@@ -12,74 +13,59 @@ interface BadgeStyle {
 }
 
 export const ORDER_STATUS_STYLES: Record<OrderStatus, BadgeStyle> = {
-  new: { label: "New", className: "bg-secondary-container text-on-secondary-fixed" },
-  shipped: { label: "Shipped", className: "bg-primary-fixed text-on-primary-fixed-variant" },
-  canceled: { label: "Canceled", className: "bg-error-container text-on-error-container" },
+  NEW: { label: "New", className: "bg-secondary-container text-on-secondary-fixed" },
+  SHIPPED: { label: "Shipped", className: "bg-primary-fixed text-on-primary-fixed-variant" },
+  CANCELED: { label: "Canceled", className: "bg-error-container text-on-error-container" },
 };
 
 export const SALES_CHANNEL_STYLES: Record<
   SalesChannel,
   { label: string; icon: string; className: string; iconClassName?: string }
 > = {
-  wholesale: {
+  WHOLESALE: {
     label: "Wholesale",
     icon: "storefront",
     className: "bg-surface-container-low text-on-surface-variant",
     iconClassName: "text-secondary",
   },
-  walmart: {
+  WALMART: {
     label: "Walmart",
     icon: "hub",
     className: "bg-secondary-container/40 text-on-surface",
     iconClassName: "text-tertiary",
   },
-  amazon: {
+  AMAZON: {
     label: "Amazon",
     icon: "shopping_cart",
     className: "bg-tertiary-fixed text-on-tertiary-fixed-variant",
   },
 };
 
-/** Stock status chip on the inventory table. */
-export const INVENTORY_STATUS_STYLES: Record<StockStatus, BadgeStyle & { dotClassName: string }> = {
-  in_stock: {
+export const SALES_CHANNELS: SalesChannel[] = ["WHOLESALE", "WALMART", "AMAZON"];
+
+/** Stock status chip (tables). */
+export const STOCK_STATUS_STYLES: Record<StockStatus, BadgeStyle & { dotClassName: string }> = {
+  IN_STOCK: {
     label: "In stock",
     className: "bg-secondary-container text-primary",
-    dotClassName: "bg-secondary-container",
+    dotClassName: "bg-primary",
   },
-  low_stock: {
+  LOW: {
     label: "Low",
-    className: "bg-surface-container-high text-on-surface-variant",
-    dotClassName: "bg-surface-variant",
+    className: "bg-amber-50 text-amber-800",
+    dotClassName: "bg-amber-600",
   },
-  out_of_stock: {
+  OUT: {
     label: "Out",
     className: "bg-error-container text-error",
     dotClassName: "bg-error",
   },
 };
 
-/** Stock status chip on the product catalogue cards. */
-export const PRODUCT_STATUS_STYLES: Record<StockStatus, BadgeStyle & { dotClassName: string }> = {
-  in_stock: {
-    label: "In Stock",
-    className: "bg-emerald-50 text-emerald-800",
-    dotClassName: "bg-emerald-600",
-  },
-  low_stock: {
-    label: "Low Stock",
-    className: "bg-amber-50 text-amber-800",
-    dotClassName: "bg-amber-600",
-  },
-  out_of_stock: {
-    label: "Out of Stock",
-    className: "bg-rose-50 text-rose-800",
-    dotClassName: "bg-rose-600",
-  },
-};
+export const STOCK_STATUSES: StockStatus[] = ["IN_STOCK", "LOW", "OUT"];
 
-export const STOCK_MOVEMENT_STYLES: Record<
-  StockMovementType,
+export const INVENTORY_TX_STYLES: Record<
+  InventoryTransactionType,
   { className: string; quantityClassName: string }
 > = {
   IN: { className: "bg-secondary-container text-primary", quantityClassName: "text-primary" },
@@ -87,15 +73,22 @@ export const STOCK_MOVEMENT_STYLES: Record<
   DAMAGED: { className: "bg-error-container text-error", quantityClassName: "text-error" },
 };
 
-export const PURCHASE_ORDER_STATUS_STYLES: Record<PurchaseOrderStatus, BadgeStyle> = {
-  draft: { label: "Draft", className: "bg-surface-container text-secondary" },
-  ordered: { label: "Ordered", className: "bg-surface-container-highest text-primary" },
-  received: { label: "Received", className: "bg-primary-fixed text-on-primary-fixed-variant" },
+export const INVENTORY_REF_LABELS: Record<InventoryRefType, string> = {
+  SALES_ORDER: "Sales order",
+  PURCHASE_ORDER: "Purchase order",
+  MANUAL: "Manual",
+  OPENING_BALANCE: "Opening balance",
 };
 
-export const DAMAGE_CAUSES = [
-  "Crushed packaging in handling",
-  "Expired / Past best-before date",
-  "Seal compromise / Leakage",
-  "Temperature fluctuation failure",
+export const PURCHASE_ORDER_STATUS_STYLES: Record<PurchaseOrderStatus, BadgeStyle> = {
+  ORDERED: { label: "Ordered", className: "bg-surface-container-highest text-primary" },
+  RECEIVED: { label: "Received", className: "bg-primary-fixed text-on-primary-fixed-variant" },
+};
+
+/** Quick picks for the damage reason (free text is also allowed). */
+export const DAMAGE_REASONS = [
+  "Vỡ / móp khi bốc dỡ",
+  "Hết hạn sử dụng",
+  "Rò rỉ / hở nắp",
+  "Hư hỏng do nhiệt độ",
 ] as const;

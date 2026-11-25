@@ -1,29 +1,35 @@
-import { ORDER_DETAILS_MOCK, ORDERS_MOCK, ORDER_STATS_MOCK } from "@/constants/mock-data";
-import type { Order, OrderDetail, OrderStats } from "@/interfaces";
+import type {
+  Invoice,
+  OrderCreatePayload,
+  OrderDetail,
+  OrderImportResult,
+  OrderQuery,
+  OrderSummary,
+  Page,
+  SalesChannel,
+} from "@/interfaces";
+import { apiRequest, apiText } from "./api-client";
 
 export const orderService = {
-  async getOrders(): Promise<Order[]> {
-    return ORDERS_MOCK;
+  list: (query: OrderQuery = {}) => apiRequest<Page<OrderSummary>>("/orders", { query: { ...query } }),
+
+  get: (id: number) => apiRequest<OrderDetail>(`/orders/${id}`),
+
+  create: (payload: OrderCreatePayload) => apiRequest<OrderDetail>("/orders", { method: "POST", body: payload }),
+
+  /** 409 INSUFFICIENT_STOCK lists every short SKU in ApiError.shortages. */
+  ship: (id: number) => apiRequest<OrderDetail>(`/orders/${id}/ship`, { method: "POST" }),
+
+  cancel: (id: number) => apiRequest<OrderDetail>(`/orders/${id}/cancel`, { method: "POST" }),
+
+  /** Idempotent: returns the existing invoice if the order already has one. */
+  issueInvoice: (id: number) => apiRequest<Invoice>(`/orders/${id}/invoice`, { method: "POST" }),
+
+  importCsv: (channel: SalesChannel, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return apiRequest<OrderImportResult>("/orders/import", { method: "POST", query: { channel }, formData });
   },
 
-  async getRecentOrders(limit = 5): Promise<Order[]> {
-    return ORDERS_MOCK.slice(0, limit);
-  },
-
-  async getOrderStats(): Promise<OrderStats> {
-    return ORDER_STATS_MOCK;
-  },
-
-  /** Returns `null` when the order does not exist or has no detail record. */
-  async getOrderById(orderId: string): Promise<OrderDetail | null> {
-    const order = ORDERS_MOCK.find((item) => item.id === orderId);
-    const detail = ORDER_DETAILS_MOCK[orderId];
-    if (!order || !detail) return null;
-    return { ...order, ...detail };
-  },
-
-  /** Ids that have a full detail record (used for static generation). */
-  async getOrderIdsWithDetail(): Promise<string[]> {
-    return Object.keys(ORDER_DETAILS_MOCK);
-  },
+  importTemplate: () => apiText("/orders/import/template"),
 };

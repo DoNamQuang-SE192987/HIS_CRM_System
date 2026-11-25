@@ -14,8 +14,12 @@ interface ModalProps {
   iconClassName?: string;
   /** Background classes for the header strip */
   headerClassName?: string;
+  /** "md" = max-w-lg (default), "lg" = max-w-2xl, "xl" = max-w-4xl */
+  size?: "md" | "lg" | "xl";
   children: ReactNode;
 }
+
+const SIZE_CLASS = { md: "max-w-lg", lg: "max-w-2xl", xl: "max-w-4xl" } as const;
 
 export function Modal({
   isOpen,
@@ -25,6 +29,7 @@ export function Modal({
   icon,
   iconClassName = "bg-primary text-on-primary",
   headerClassName = "bg-surface-container-low",
+  size = "md",
   children,
 }: ModalProps) {
   useEffect(() => {
@@ -47,7 +52,10 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="bg-surface-container-lowest rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col animate-fade-in"
+        className={cn(
+          "bg-surface-container-lowest rounded-xl shadow-xl w-full max-h-[90vh] overflow-y-auto flex flex-col animate-fade-in",
+          SIZE_CLASS[size],
+        )}
         onClick={(event) => event.stopPropagation()}
       >
         <div className={cn("p-space-lg flex items-center justify-between", headerClassName)}>

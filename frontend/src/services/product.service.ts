@@ -1,17 +1,16 @@
-import { PRODUCTS_MOCK } from "@/constants/mock-data";
-import type { Product } from "@/interfaces";
-import { getStockStatus } from "@/utils";
+import type { Page, Product, ProductPayload, ProductQuery } from "@/interfaces";
+import { apiRequest } from "./api-client";
 
-/**
- * Product catalogue data access.
- * Backed by mock data for now — swap the bodies for real API calls later.
- */
 export const productService = {
-  async getProducts(): Promise<Product[]> {
-    return PRODUCTS_MOCK;
-  },
+  list: (query: ProductQuery = {}) => apiRequest<Page<Product>>("/products", { query: { ...query } }),
 
-  async getLowStockProducts(): Promise<Product[]> {
-    return PRODUCTS_MOCK.filter((product) => getStockStatus(product) === "low_stock");
-  },
+  get: (id: number) => apiRequest<Product>(`/products/${id}`),
+
+  create: (payload: ProductPayload) => apiRequest<Product>("/products", { method: "POST", body: payload }),
+
+  /** Stock is never sent - it only changes through warehouse operations. */
+  update: (id: number, payload: Omit<ProductPayload, "stockQty">) =>
+    apiRequest<Product>(`/products/${id}`, { method: "PUT", body: payload }),
+
+  toggle: (id: number) => apiRequest<Product>(`/products/${id}/toggle`, { method: "PATCH" }),
 };

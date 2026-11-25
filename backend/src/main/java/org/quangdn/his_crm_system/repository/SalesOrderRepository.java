@@ -2,6 +2,7 @@ package org.quangdn.his_crm_system.repository;
 
 import jakarta.persistence.LockModeType;
 import org.quangdn.his_crm_system.entity.SalesOrder;
+import org.quangdn.his_crm_system.enums.OrderStatus;
 import org.quangdn.his_crm_system.enums.SalesChannel;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,6 +14,10 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long>, JpaSpecificationExecutor<SalesOrder> {
@@ -36,4 +41,24 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long>, J
     Optional<SalesOrder> findByIdForUpdate(@Param("id") Long id);
 
     Optional<SalesOrder> findByChannelAndExternalOrderNo(SalesChannel channel, String externalOrderNo);
+
+    // ---------------------------------------------------------------- dashboard
+
+    long countByOrderDateAndStatusNot(LocalDate orderDate, OrderStatus status);
+
+    /** Rows of [SalesChannel, Long count]. */
+    @Query("select o.channel, count(o) from SalesOrder o where o.status = :status group by o.channel")
+    List<Object[]> countByChannelForStatus(@Param("status") OrderStatus status);
+
+    /** Revenue is recognised when goods leave the warehouse: SHIPPED orders by shippedAt. */
+    @Query("""
+            select coalesce(sum(o.total), 0) from SalesOrder o
+            where o.status = org.quangdn.his_crm_system.enums.OrderStatus.SHIPPED
+              and o.shippedAt >= :from and o.shippedAt < :to""")
+    BigDecimal sumShippedRevenue(@Param("from") Instant from, @Param("to") Instant to);
+
+    @EntityGraph(attributePaths = "customer")
+    List<SalesOrder> findByStatusAndShipByBeforeOrderByShipByAsc(OrderStatus status, LocalDate date, Pageable pageable);
+
+    long countByStatusAndShipByBefore(OrderStatus status, LocalDate date);
 }

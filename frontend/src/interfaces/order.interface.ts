@@ -1,55 +1,101 @@
-import type { Address } from "./common.interface";
+import type { Customer } from "./customer.interface";
 
-export type SalesChannel = "wholesale" | "walmart" | "amazon";
-export type ChannelGroup = "wholesale" | "ecommerce";
-export type OrderStatus = "new" | "shipped" | "canceled";
+export type SalesChannel = "WHOLESALE" | "WALMART" | "AMAZON";
+export type OrderStatus = "NEW" | "SHIPPED" | "CANCELED";
 
-export interface Order {
-  id: string;
-  /** Order source / reference note, e.g. "EDI Direct" */
-  reference: string;
+export interface OrderSummary {
+  id: number;
+  code: string;
   channel: SalesChannel;
-  customer: string;
-  customerNote: string;
+  externalOrderNo: string | null;
+  customerId: number;
+  customerName: string;
+  recipientName: string;
   orderDate: string;
+  shipBy: string | null;
   total: number;
   status: OrderStatus;
+  overdue: boolean;
 }
 
-export interface OrderLineItem {
+export interface OrderItem {
+  id: number;
+  productId: number;
   sku: string;
   productName: string;
-  packSize: string;
-  quantity: number;
+  packSize: string | null;
+  qty: number;
   unitPrice: number;
+  lineTotal: number;
+  availableStock: number;
+  enoughStock: boolean;
 }
 
-export interface InvoiceInfo {
-  invoiceNumber: string;
+export interface InvoiceSummary {
+  id: number;
+  invoiceNo: string;
   invoiceDate: string;
+  dueDate: string;
   paymentTermDays: number;
 }
 
-export interface OrderDetail extends Order {
+export interface OrderDetail {
+  id: number;
+  code: string;
+  channel: SalesChannel;
+  externalOrderNo: string | null;
+  customer: Customer;
+  recipientName: string;
+  shipTo: string;
+  billTo: string | null;
+  orderDate: string;
+  shipBy: string | null;
+  status: OrderStatus;
+  overdue: boolean;
+  canShip: boolean;
+  total: number;
+  note: string | null;
+  items: OrderItem[];
+  invoice: InvoiceSummary | null;
   createdAt: string;
-  channelDescription: string;
-  marketplaceOrderNo?: string;
-  account: {
-    name: string;
-    accountNo: string;
-    tier: string;
-  };
-  shipTo: Address;
-  billTo: Address;
-  items: OrderLineItem[];
-  invoice?: InvoiceInfo;
+  shippedAt: string | null;
+  canceledAt: string | null;
 }
 
-export interface OrderStats {
-  totalVolume: number;
-  volumeTrendPct: number;
-  awaitingDispatch: number;
-  priorityColdChain: number;
-  dispatchedToday: number;
-  exceptions: number;
+export interface OrderQuery {
+  status?: OrderStatus;
+  channel?: SalesChannel;
+  q?: string;
+  page?: number;
+  size?: number;
+}
+
+export interface OrderCreatePayload {
+  channel: SalesChannel;
+  externalOrderNo?: string;
+  customerId?: number;
+  recipientName?: string;
+  shipTo?: string;
+  billTo?: string;
+  shipBy?: string;
+  note?: string;
+  items: { productId: number; qty: number }[];
+}
+
+export type ImportResultStatus = "CREATED" | "SKIPPED" | "FAILED";
+
+export interface OrderImportResult {
+  channel: SalesChannel;
+  totalOrders: number;
+  created: number;
+  skipped: number;
+  failed: number;
+  results: {
+    externalOrderNo: string | null;
+    lines: number[];
+    status: ImportResultStatus;
+    orderId?: number;
+    orderCode?: string;
+    message?: string;
+  }[];
 }

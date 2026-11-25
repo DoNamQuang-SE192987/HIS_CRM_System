@@ -1,8 +1,6 @@
-import { DASHBOARD_STATS_MOCK } from "@/constants/mock-data";
-import type { DashboardStats } from "@/interfaces";
+import type { DashboardSummary } from "@/interfaces";
+import { apiRequest } from "./api-client";
 
 export const dashboardService = {
-  async getStats(): Promise<DashboardStats> {
-    return DASHBOARD_STATS_MOCK;
-  },
+  summary: () => apiRequest<DashboardSummary>("/dashboard/summary"),
 };
