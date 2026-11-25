@@ -7,25 +7,20 @@ import org.quangdn.his_crm_system.dto.request.OrderItemRequest;
 import org.quangdn.his_crm_system.dto.respone.OrderDetailResponse;
 import org.quangdn.his_crm_system.dto.respone.OrderSummaryResponse;
 import org.quangdn.his_crm_system.dto.respone.PageResponse;
-import org.quangdn.his_crm_system.dto.respone.StockShortageResponse;
 import org.quangdn.his_crm_system.entity.Customer;
 import org.quangdn.his_crm_system.entity.OrderItem;
 import org.quangdn.his_crm_system.entity.Product;
 import org.quangdn.his_crm_system.entity.SalesOrder;
-import org.quangdn.his_crm_system.entity.StockTransaction;
 import org.quangdn.his_crm_system.enums.OrderStatus;
-import org.quangdn.his_crm_system.enums.StockTransactionType;
 import org.quangdn.his_crm_system.exception.DuplicateResourceException;
-import org.quangdn.his_crm_system.exception.InsufficientStockException;
 import org.quangdn.his_crm_system.exception.InvalidStatusException;
 import org.quangdn.his_crm_system.exception.RequestValidationException;
 import org.quangdn.his_crm_system.exception.ResourceNotFoundException;
 import org.quangdn.his_crm_system.repository.InvoiceRepository;
-import org.quangdn.his_crm_system.repository.ProductRepository;
 import org.quangdn.his_crm_system.repository.SalesOrderRepository;
 import org.quangdn.his_crm_system.repository.SalesOrderSpecifications;
-import org.quangdn.his_crm_system.repository.StockTransactionRepository;
 import org.quangdn.his_crm_system.service.CustomerService;
+import org.quangdn.his_crm_system.service.InventoryService;
 import org.quangdn.his_crm_system.service.OrderService;
 import org.quangdn.his_crm_system.service.ProductService;
 import org.springframework.data.domain.PageRequest;
@@ -37,14 +32,9 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -53,8 +43,7 @@ public class OrderServiceImpl implements OrderService {
 
     private final SalesOrderRepository orderRepository;
     private final InvoiceRepository invoiceRepository;
-    private final ProductRepository productRepository;
-    private final StockTransactionRepository stockTransactionRepository;
+    private final InventoryService inventoryService;
     private final ProductService productService;
     private final CustomerService customerService;
     private final Clock clock;
@@ -144,40 +133,8 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() -> new ResourceNotFoundException("Order", id));
         requireNew(order, "ship", "shipped");
 
-        // total qty per product (lines are unique per product today, but stay safe if that ever changes)
-        Map<Long, Integer> requiredByProduct = order.getItems().stream()
-                .collect(Collectors.toMap(i -> i.getProduct().getId(), OrderItem::getQty, Integer::sum, LinkedHashMap::new));
-
-        Map<Long, Product> locked = productRepository.findAllByIdForUpdate(requiredByProduct.keySet()).stream()
-                .collect(Collectors.toMap(Product::getId, Function.identity()));
-
-        List<StockShortageResponse> shortages = new ArrayList<>();
-        requiredByProduct.forEach((productId, required) -> {
-            Product product = locked.get(productId);
-            if (product.getStockQty() < required) {
-                shortages.add(new StockShortageResponse(product.getSku(), required, product.getStockQty()));
-            }
-        });
-        if (!shortages.isEmpty()) {
-            // nothing has been modified yet; the exception also rolls back the transaction
-            throw new InsufficientStockException(order.getCode(), shortages);
-        }
-
-        List<StockTransaction> transactions = new ArrayList<>();
-        requiredByProduct.forEach((productId, qty) -> {
-            Product product = locked.get(productId);
-            product.setStockQty(product.getStockQty() - qty);
-
-            StockTransaction tx = new StockTransaction();
-            tx.setProduct(product);
-            tx.setType(StockTransactionType.OUT);
-            tx.setQuantity(qty);
-            tx.setBalanceAfter(product.getStockQty());
-            tx.setReference(order.getCode());
-            tx.setNote("Shipped order " + order.getCode());
-            transactions.add(tx);
-        });
-        stockTransactionRepository.saveAll(transactions);
+        // locks products, checks every line, deducts + writes OUT; throws (and rolls back everything) if short
+        inventoryService.shipSalesOrder(order);
 
         order.setStatus(OrderStatus.SHIPPED);
         order.setShippedAt(Instant.now(clock));

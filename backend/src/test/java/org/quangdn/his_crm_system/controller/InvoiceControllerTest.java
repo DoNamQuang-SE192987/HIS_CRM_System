@@ -8,7 +8,8 @@ import org.quangdn.his_crm_system.repository.CustomerRepository;
 import org.quangdn.his_crm_system.repository.InvoiceRepository;
 import org.quangdn.his_crm_system.repository.ProductRepository;
 import org.quangdn.his_crm_system.repository.SalesOrderRepository;
-import org.quangdn.his_crm_system.repository.StockTransactionRepository;
+import org.quangdn.his_crm_system.repository.InventoryTransactionRepository;
+import org.quangdn.his_crm_system.support.DatabaseCleaner;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -35,9 +36,10 @@ class InvoiceControllerTest {
     private static final String ROLE = "X-User-Role";
 
     @Autowired private MockMvc mvc;
+    @Autowired private DatabaseCleaner databaseCleaner;
     @Autowired private InvoiceRepository invoiceRepository;
     @Autowired private SalesOrderRepository orderRepository;
-    @Autowired private StockTransactionRepository stockTransactionRepository;
+    @Autowired private InventoryTransactionRepository inventoryTransactionRepository;
     @Autowired private ProductRepository productRepository;
     @Autowired private CustomerRepository customerRepository;
 
@@ -47,11 +49,7 @@ class InvoiceControllerTest {
 
     @BeforeEach
     void setUp() {
-        stockTransactionRepository.deleteAll();
-        invoiceRepository.deleteAll();
-        orderRepository.deleteAll();
-        productRepository.deleteAll();
-        customerRepository.deleteAll();
+        databaseCleaner.clean();
 
         customer = new Customer();
         customer.setName("Pacific Harvest Foods");

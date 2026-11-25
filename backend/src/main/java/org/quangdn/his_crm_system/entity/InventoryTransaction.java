@@ -16,23 +16,25 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
-import org.quangdn.his_crm_system.enums.StockTransactionType;
+import org.quangdn.his_crm_system.enums.InventoryRefType;
+import org.quangdn.his_crm_system.enums.InventoryTransactionType;
 
 import java.time.Instant;
 
 /**
- * Stock ledger (thẻ kho) - append-only. Replaces the warehouse's per-date Excel columns:
- * every change of {@link Product#getStockQty()} writes exactly one row here.
+ * Stock ledger (thẻ kho) - append-only, written only by InventoryService. Replaces the warehouse's
+ * per-date Excel columns. Invariant: for every product, SUM(quantity) = product.stockQty.
  */
 @Entity
-@Table(name = "stock_transactions", indexes = {
-        @Index(name = "idx_stock_tx_product", columnList = "product_id"),
-        @Index(name = "idx_stock_tx_reference", columnList = "reference")
+@Table(name = "inventory_transactions", indexes = {
+        @Index(name = "idx_inv_tx_product", columnList = "product_id"),
+        @Index(name = "idx_inv_tx_ref", columnList = "ref_type, ref_id"),
+        @Index(name = "idx_inv_tx_created_at", columnList = "created_at")
 })
 @Getter
 @Setter
 @NoArgsConstructor
-public class StockTransaction {
+public class InventoryTransaction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -44,9 +46,9 @@ public class StockTransaction {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private StockTransactionType type;
+    private InventoryTransactionType type;
 
-    /** Always positive; the direction comes from {@link #type}. */
+    /** Signed: +IN, -OUT, -DAMAGED. */
     @Column(nullable = false)
     private Integer quantity;
 
@@ -54,14 +56,23 @@ public class StockTransaction {
     @Column(nullable = false)
     private Integer balanceAfter;
 
-    /** Source document: order code (SO-...), purchase order code (PO-...), damage report... */
-    @Column(nullable = false, length = 50)
-    private String reference;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ref_type", nullable = false, length = 30)
+    private InventoryRefType refType;
 
+    /** Id of the source document (sales order / purchase order); null for MANUAL and OPENING_BALANCE. */
+    @Column(name = "ref_id")
+    private Long refId;
+
+    /** Human code of the source document (SO-2026-0001 / PO-2026-0001), for display. */
+    @Column(name = "ref_code", length = 30)
+    private String refCode;
+
+    /** Free note; for DAMAGED this is the (mandatory) reason. */
     @Column(length = 500)
     private String note;
 
     @CreationTimestamp
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 }

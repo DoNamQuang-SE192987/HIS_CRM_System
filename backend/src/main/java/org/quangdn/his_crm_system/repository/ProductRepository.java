@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpecificationExecutor<Product> {
 
@@ -18,6 +19,10 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
     boolean existsBySkuAndIdNot(String sku, Long id);
 
     List<Product> findBySkuIn(Collection<String> skus);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Product p where p.id = :id")
+    Optional<Product> findByIdForUpdate(@Param("id") Long id);
 
     /**
      * SELECT ... FOR UPDATE on the given products. Rows are locked in id order so two transactions

@@ -3,10 +3,8 @@ package org.quangdn.his_crm_system.controller;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.quangdn.his_crm_system.entity.Product;
-import org.quangdn.his_crm_system.repository.InvoiceRepository;
 import org.quangdn.his_crm_system.repository.ProductRepository;
-import org.quangdn.his_crm_system.repository.SalesOrderRepository;
-import org.quangdn.his_crm_system.repository.StockTransactionRepository;
+import org.quangdn.his_crm_system.support.DatabaseCleaner;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -39,20 +37,11 @@ class ProductControllerTest {
     private ProductRepository repository;
 
     @Autowired
-    private SalesOrderRepository orderRepository;
-
-    @Autowired
-    private InvoiceRepository invoiceRepository;
-
-    @Autowired
-    private StockTransactionRepository stockTransactionRepository;
+    private DatabaseCleaner databaseCleaner;
 
     @BeforeEach
     void setUp() {
-        stockTransactionRepository.deleteAll();
-        invoiceRepository.deleteAll();
-        orderRepository.deleteAll();
-        repository.deleteAll();
+        databaseCleaner.clean();
     }
 
     // ---------- GET /products ----------
