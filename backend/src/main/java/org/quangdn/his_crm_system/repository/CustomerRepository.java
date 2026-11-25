@@ -1,13 +1,13 @@
 package org.quangdn.his_crm_system.repository;
 
 import org.quangdn.his_crm_system.entity.Customer;
+import org.quangdn.his_crm_system.enums.SalesChannel;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-import java.util.List;
+import java.util.Optional;
 
-public interface CustomerRepository extends JpaRepository<Customer, Long> {
+public interface CustomerRepository extends JpaRepository<Customer, Long>, JpaSpecificationExecutor<Customer> {
 
-    List<Customer> findAllByOrderByNameAsc();
-
-    List<Customer> findByNameContainingIgnoreCaseOrPhoneContainingOrderByNameAsc(String name, String phone);
+    Optional<Customer> findByMarketplaceChannel(SalesChannel channel);
 }

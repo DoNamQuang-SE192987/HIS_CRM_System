@@ -3,7 +3,9 @@ package org.quangdn.his_crm_system.config;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.quangdn.his_crm_system.entity.Customer;
+import org.quangdn.his_crm_system.enums.SalesChannel;
 import org.quangdn.his_crm_system.repository.CustomerRepository;
+import org.quangdn.his_crm_system.repository.CustomerSpecifications;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -12,7 +14,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-/** Sample wholesale + marketplace customers for UAT. Runs only when the customers table is empty. */
+/**
+ * Sample wholesale customers for UAT. Runs only when no wholesale customer exists yet.
+ * Marketplace buyers are not customers - see {@link MarketplaceAccountInitializer}.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -24,15 +29,13 @@ public class CustomerSeeder implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        if (customerRepository.count() > 0) {
+        if (customerRepository.count(CustomerSpecifications.filter(null, SalesChannel.WHOLESALE)) > 0) {
             return;
         }
         List<Customer> customers = List.of(
                 customer("Pacific Harvest Foods", "(510) 555-0142", "1420 Harbor Blvd, Oakland, CA 94607", 30),
                 customer("Golden Gate Asian Market", "(415) 555-0187", "2250 Irving St, San Francisco, CA 94122", 15),
-                customer("Sunrise Supermarket Chain", "(408) 555-0133", "1600 Story Rd, San Jose, CA 95122", 30),
-                customer("Elizabeth Lopez", null, "12002 Fairpoint Dr, Houston, TX 77099", 0),
-                customer("Priscilla Luu", null, "8800 Bellaire Blvd, Houston, TX 77036", 0)
+                customer("Sunrise Supermarket Chain", "(408) 555-0133", "1600 Story Rd, San Jose, CA 95122", 30)
         );
         customerRepository.saveAll(customers);
         log.info("Seeded {} customers", customers.size());

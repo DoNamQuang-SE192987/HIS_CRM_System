@@ -36,7 +36,8 @@ public final class SalesOrderSpecifications {
                 predicates.add(cb.or(
                         cb.like(cb.lower(root.get("code")), pattern, LIKE_ESCAPE),
                         cb.like(cb.lower(root.get("externalOrderNo")), pattern, LIKE_ESCAPE),
-                        cb.like(cb.lower(customer.get("name")), pattern, LIKE_ESCAPE)
+                        cb.like(cb.lower(customer.get("name")), pattern, LIKE_ESCAPE),
+                        cb.like(cb.lower(root.get("recipientName")), pattern, LIKE_ESCAPE)
                 ));
             }
             return cb.and(predicates.toArray(Predicate[]::new));
