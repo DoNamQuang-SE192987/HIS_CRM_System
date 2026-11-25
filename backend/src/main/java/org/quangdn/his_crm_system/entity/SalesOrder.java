@@ -64,9 +64,17 @@ public class SalesOrder {
     @Column(name = "external_order_no", length = 50)
     private String externalOrderNo;
 
+    /**
+     * Who we invoice. Wholesale: the business customer. Marketplace: the shared marketplace account
+     * ("Walmart Marketplace") - the individual buyer is only stored on the order ({@link #recipientName}).
+     */
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
+
+    /** Person / company receiving the goods, e.g. the Walmart buyer "Elizabeth Lopez". */
+    @Column(nullable = false)
+    private String recipientName;
 
     /** Snapshot of the addresses at order time - later customer edits must not rewrite old invoices. */
     @Column(nullable = false, length = 500)

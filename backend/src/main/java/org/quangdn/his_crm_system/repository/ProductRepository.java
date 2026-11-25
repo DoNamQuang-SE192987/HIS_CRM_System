@@ -17,6 +17,8 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 
     boolean existsBySkuAndIdNot(String sku, Long id);
 
+    List<Product> findBySkuIn(Collection<String> skus);
+
     /**
      * SELECT ... FOR UPDATE on the given products. Rows are locked in id order so two transactions
      * shipping overlapping products always lock in the same sequence and cannot deadlock.

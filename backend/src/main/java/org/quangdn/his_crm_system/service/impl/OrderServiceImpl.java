@@ -79,19 +79,33 @@ public class OrderServiceImpl implements OrderService {
         String externalOrderNo = validateExternalOrderNo(request);
         validateNoDuplicateProducts(request.items());
 
-        Customer customer = customerService.getEntity(request.customerId());
-        String shipTo = firstNonBlank(request.shipTo(), customer.getAddress());
-        if (shipTo == null) {
-            throw new RequestValidationException("shipTo", "is required (customer has no default address)");
+        Customer customer = resolveCustomer(request);
+        boolean marketplace = request.channel().isMarketplace();
+
+        // Marketplace: the buyer is a one-off person, so recipient + address must come with the order.
+        // Wholesale: default to the customer's own name / address.
+        String recipientName = marketplace
+                ? trimToNull(request.recipientName())
+                : firstNonBlank(request.recipientName(), customer.getName());
+        if (recipientName == null) {
+            throw new RequestValidationException("recipientName", "is required for " + request.channel() + " orders");
         }
+        String shipTo = marketplace ? trimToNull(request.shipTo()) : firstNonBlank(request.shipTo(), customer.getAddress());
+        if (shipTo == null) {
+            throw new RequestValidationException("shipTo", marketplace
+                    ? "is required for " + request.channel() + " orders"
+                    : "is required (customer has no default address)");
+        }
+        String billTo = marketplace ? trimToNull(request.billTo()) : firstNonBlank(request.billTo(), customer.getAddress());
 
         SalesOrder order = new SalesOrder();
         order.setChannel(request.channel());
         order.setExternalOrderNo(externalOrderNo);
         order.setCustomer(customer);
+        order.setRecipientName(recipientName);
         order.setShipTo(shipTo);
-        order.setBillTo(firstNonBlank(request.billTo(), customer.getAddress()));
-        order.setOrderDate(today());
+        order.setBillTo(billTo);
+        order.setOrderDate(request.orderDate() != null ? request.orderDate() : today());
         order.setShipBy(request.shipBy());
         order.setNote(trimToNull(request.note()));
         order.setStatus(OrderStatus.NEW);
@@ -195,6 +209,30 @@ public class OrderServiceImpl implements OrderService {
             throw new InvalidStatusException("Cannot %s order %s: status is %s, only NEW orders can be %s"
                     .formatted(action, order.getCode(), order.getStatus(), pastTense));
         }
+    }
+
+    /**
+     * WHOLESALE orders need a wholesale customer. Marketplace orders are billed to that marketplace's account:
+     * omitted customerId = the account is used automatically; any other customer is rejected.
+     */
+    private Customer resolveCustomer(OrderCreateRequest request) {
+        if (request.channel().isMarketplace()) {
+            Customer account = customerService.getMarketplaceAccount(request.channel());
+            if (request.customerId() != null && !request.customerId().equals(account.getId())) {
+                throw new RequestValidationException("customerId", "%s orders are billed to '%s' (id %d); omit customerId"
+                        .formatted(request.channel(), account.getName(), account.getId()));
+            }
+            return account;
+        }
+        if (request.customerId() == null) {
+            throw new RequestValidationException("customerId", "is required for WHOLESALE orders");
+        }
+        Customer customer = customerService.getEntity(request.customerId());
+        if (customer.isMarketplaceAccount()) {
+            throw new RequestValidationException("customerId",
+                    "'" + customer.getName() + "' is a marketplace account and cannot be used for WHOLESALE orders");
+        }
+        return customer;
     }
 
     /** Marketplace orders must carry the marketplace order no (unique per channel); wholesale must not. */

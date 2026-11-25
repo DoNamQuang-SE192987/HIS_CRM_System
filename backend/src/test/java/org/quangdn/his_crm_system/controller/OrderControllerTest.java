@@ -92,20 +92,23 @@ class OrderControllerTest {
     @Test
     void create_snapshotsPricesAndComputesTotals() throws Exception {
         createOrder("""
-                {"channel":"WALMART","externalOrderNo":"200013751032753","customerId":%d,
+                {"channel":"WALMART","externalOrderNo":"200013751032753","recipientName":"Elizabeth Lopez",
                  "shipTo":"12002 Fairpoint Dr, Houston, TX 77099","billTo":"1927 Lombardy St, Houston, TX 77023",
                  "shipBy":"2099-01-01",
                  "items":[{"productId":%d,"qty":10},{"productId":%d,"qty":2}]}
-                """.formatted(customer.getId(), noodle.getId(), sauce.getId()))
+                """.formatted(noodle.getId(), sauce.getId()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.code", matchesPattern("SO-\\d{4}-\\d{4}")))
                 .andExpect(jsonPath("$.invoiceNo", matchesPattern("INV-\\d{4}-\\d{4}")))
                 .andExpect(jsonPath("$.status").value("NEW"))
+                .andExpect(jsonPath("$.customer.name").value("Walmart Marketplace"))
+                .andExpect(jsonPath("$.customer.marketplaceChannel").value("WALMART"))
+                .andExpect(jsonPath("$.recipientName").value("Elizabeth Lopez"))
                 .andExpect(jsonPath("$.items[0].unitPrice").value(35.88))
                 .andExpect(jsonPath("$.items[0].lineTotal").value(358.80))
                 .andExpect(jsonPath("$.items[1].lineTotal").value(95.76))
                 .andExpect(jsonPath("$.total").value(454.56))
-                .andExpect(jsonPath("$.paymentTermDays").value(30));
+                .andExpect(jsonPath("$.paymentTermDays").value(0));
 
         // changing the catalogue price later must not change the order
         noodle.setPrice(new BigDecimal("99.00"));
@@ -120,7 +123,64 @@ class OrderControllerTest {
         createOrder(wholesale(noodle.getId(), 1))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.shipTo").value("1420 Harbor Blvd, Oakland, CA"))
+                .andExpect(jsonPath("$.recipientName").value("Pacific Harvest Foods"))
+                .andExpect(jsonPath("$.paymentTermDays").value(30))
                 .andExpect(jsonPath("$.externalOrderNo").doesNotExist());
+    }
+
+    @Test
+    void create_customerMustMatchChannel() throws Exception {
+        // wholesale needs a customer
+        createOrder("""
+                {"channel":"WHOLESALE","items":[{"productId":%d,"qty":1}]}
+                """.formatted(noodle.getId()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.customerId").exists());
+
+        // a wholesale customer cannot be put on a Walmart order
+        createOrder("""
+                {"channel":"WALMART","externalOrderNo":"W-9","customerId":%d,"recipientName":"A","shipTo":"B",
+                 "items":[{"productId":%d,"qty":1}]}
+                """.formatted(customer.getId(), noodle.getId()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.customerId").exists());
+
+        // ...and the Walmart account cannot be used for wholesale
+        Long walmartOrderId = idOf(createOrder(walmart("W-10")));
+        Long accountId = orderRepository.findDetailById(walmartOrderId).orElseThrow().getCustomer().getId();
+        createOrder("""
+                {"channel":"WHOLESALE","customerId":%d,"items":[{"productId":%d,"qty":1}]}
+                """.formatted(accountId, noodle.getId()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.customerId").exists());
+
+        // passing the right marketplace account explicitly is fine
+        createOrder("""
+                {"channel":"WALMART","externalOrderNo":"W-11","customerId":%d,"recipientName":"A","shipTo":"B",
+                 "items":[{"productId":%d,"qty":1}]}
+                """.formatted(accountId, noodle.getId()))
+                .andExpect(status().isCreated());
+
+        // exactly one Walmart account exists, and the dropdown filter finds it / hides it
+        mvc.perform(get("/customers").param("channel", "WALMART").header(ROLE, "SALES"))
+                .andExpect(jsonPath("$[*].name", contains("Walmart Marketplace")));
+        mvc.perform(get("/customers").param("channel", "WHOLESALE").header(ROLE, "SALES"))
+                .andExpect(jsonPath("$[*].name", contains("Pacific Harvest Foods")));
+    }
+
+    @Test
+    void create_marketplaceNeedsRecipientAndShipTo() throws Exception {
+        createOrder("""
+                {"channel":"AMAZON","externalOrderNo":"A-1","shipTo":"Somewhere","items":[{"productId":%d,"qty":1}]}
+                """.formatted(noodle.getId()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.recipientName").exists());
+
+        createOrder("""
+                {"channel":"AMAZON","externalOrderNo":"A-1","recipientName":"Bob","items":[{"productId":%d,"qty":1}]}
+                """.formatted(noodle.getId()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.shipTo").exists());
     }
 
     @Test
@@ -137,11 +197,8 @@ class OrderControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrors.externalOrderNo").exists());
 
-        String walmart = """
-                {"channel":"WALMART","externalOrderNo":"W-1","customerId":%d,"items":[{"productId":%d,"qty":1}]}
-                """.formatted(customer.getId(), noodle.getId());
-        createOrder(walmart).andExpect(status().isCreated());
-        createOrder(walmart)
+        createOrder(walmart("W-1")).andExpect(status().isCreated());
+        createOrder(walmart("W-1"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("DUPLICATE_RESOURCE"));
     }
@@ -193,9 +250,9 @@ class OrderControllerTest {
     @Test
     void list_filtersAndFlagsOverdue() throws Exception {
         Long overdueId = idOf(createOrder("""
-                {"channel":"WALMART","externalOrderNo":"W-OLD","customerId":%d,"shipBy":"%s",
-                 "items":[{"productId":%d,"qty":1}]}
-                """.formatted(customer.getId(), LocalDate.now().minusDays(2), noodle.getId())));
+                {"channel":"WALMART","externalOrderNo":"W-OLD","recipientName":"Elizabeth Lopez",
+                 "shipTo":"12002 Fairpoint Dr","shipBy":"%s","items":[{"productId":%d,"qty":1}]}
+                """.formatted(LocalDate.now().minusDays(2), noodle.getId())));
         createOrder(wholesale(noodle.getId(), 1));
 
         mvc.perform(get("/orders").header(ROLE, "SALES"))
@@ -210,7 +267,10 @@ class OrderControllerTest {
         mvc.perform(get("/orders").param("q", "w-old").header(ROLE, "SALES"))
                 .andExpect(jsonPath("$.totalItems").value(1));
         mvc.perform(get("/orders").param("q", "pacific").header(ROLE, "SALES"))
-                .andExpect(jsonPath("$.totalItems").value(2));
+                .andExpect(jsonPath("$.totalItems").value(1));
+        mvc.perform(get("/orders").param("q", "lopez").header(ROLE, "SALES"))       // marketplace buyer
+                .andExpect(jsonPath("$.items[0].recipientName").value("Elizabeth Lopez"))
+                .andExpect(jsonPath("$.items[0].customerName").value("Walmart Marketplace"));
         mvc.perform(get("/orders").param("status", "SHIPPED").header(ROLE, "SALES"))
                 .andExpect(jsonPath("$.totalItems").value(0));
 
@@ -331,6 +391,13 @@ class OrderControllerTest {
         return """
                 {"channel":"WHOLESALE","customerId":%d,"items":[{"productId":%d,"qty":%d}]}
                 """.formatted(customer.getId(), productId, qty);
+    }
+
+    private String walmart(String externalOrderNo) {
+        return """
+                {"channel":"WALMART","externalOrderNo":"%s","recipientName":"Elizabeth Lopez",
+                 "shipTo":"12002 Fairpoint Dr, Houston, TX 77099","items":[{"productId":%d,"qty":1}]}
+                """.formatted(externalOrderNo, noodle.getId());
     }
 
     private String twoLines(int noodleQty, int sauceQty) {

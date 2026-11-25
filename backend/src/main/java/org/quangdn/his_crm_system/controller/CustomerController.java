@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.quangdn.his_crm_system.config.RequireRole;
 import org.quangdn.his_crm_system.dto.request.CustomerCreateRequest;
 import org.quangdn.his_crm_system.dto.respone.CustomerResponse;
+import org.quangdn.his_crm_system.enums.SalesChannel;
 import org.quangdn.his_crm_system.service.CustomerService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,11 +29,15 @@ public class CustomerController {
 
     private final CustomerService customerService;
 
-    /** Dropdown source for the order form. {@code q} filters by name or phone. */
+    /**
+     * Dropdown source for the order form. {@code q} filters by name / phone.
+     * {@code channel=WHOLESALE} returns wholesale customers only; {@code channel=WALMART} returns the Walmart account.
+     */
     @GetMapping
     @RequireRole({SALES, MANAGER})
-    public List<CustomerResponse> list(@RequestParam(required = false) String q) {
-        return customerService.list(q);
+    public List<CustomerResponse> list(@RequestParam(required = false) String q,
+                                       @RequestParam(required = false) SalesChannel channel) {
+        return customerService.list(q, channel);
     }
 
     @PostMapping
