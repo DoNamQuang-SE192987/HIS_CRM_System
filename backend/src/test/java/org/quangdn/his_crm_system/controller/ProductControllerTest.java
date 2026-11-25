@@ -3,6 +3,7 @@ package org.quangdn.his_crm_system.controller;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.quangdn.his_crm_system.entity.Product;
+import org.quangdn.his_crm_system.repository.InvoiceRepository;
 import org.quangdn.his_crm_system.repository.ProductRepository;
 import org.quangdn.his_crm_system.repository.SalesOrderRepository;
 import org.quangdn.his_crm_system.repository.StockTransactionRepository;
@@ -41,11 +42,15 @@ class ProductControllerTest {
     private SalesOrderRepository orderRepository;
 
     @Autowired
+    private InvoiceRepository invoiceRepository;
+
+    @Autowired
     private StockTransactionRepository stockTransactionRepository;
 
     @BeforeEach
     void setUp() {
         stockTransactionRepository.deleteAll();
+        invoiceRepository.deleteAll();
         orderRepository.deleteAll();
         repository.deleteAll();
     }

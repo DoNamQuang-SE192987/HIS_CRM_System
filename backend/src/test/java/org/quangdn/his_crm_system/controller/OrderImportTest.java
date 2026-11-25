@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.quangdn.his_crm_system.entity.Product;
 import org.quangdn.his_crm_system.entity.SalesOrder;
 import org.quangdn.his_crm_system.enums.SalesChannel;
+import org.quangdn.his_crm_system.repository.InvoiceRepository;
 import org.quangdn.his_crm_system.repository.CustomerRepository;
 import org.quangdn.his_crm_system.repository.ProductRepository;
 import org.quangdn.his_crm_system.repository.SalesOrderRepository;
@@ -36,6 +37,7 @@ class OrderImportTest {
     private static final String ROLE = "X-User-Role";
 
     @Autowired private MockMvc mvc;
+    @Autowired private InvoiceRepository invoiceRepository;
     @Autowired private SalesOrderRepository orderRepository;
     @Autowired private StockTransactionRepository stockTransactionRepository;
     @Autowired private ProductRepository productRepository;
@@ -47,6 +49,7 @@ class OrderImportTest {
     @BeforeEach
     void setUp() {
         stockTransactionRepository.deleteAll();
+        invoiceRepository.deleteAll();
         orderRepository.deleteAll();
         productRepository.deleteAll();
         customerRepository.deleteAll();
