@@ -52,7 +52,8 @@ export function CreateOrderPage() {
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
+    const form = event.currentTarget; // currentTarget is null after the await below
+    const data = new FormData(form);
     const text = (name: string) => String(data.get(name) ?? "").trim() || undefined;
     const payload: OrderCreatePayload = {
       channel,
@@ -73,6 +74,13 @@ export function CreateOrderPage() {
     try {
       const order = await orderService.create(payload);
       toast.success(`Order ${order.code} created`);
+      // Cache Components keep this page alive (hidden) after navigating away, state included.
+      // Start the next "New order" visit from a blank form instead of a stuck "Saving...".
+      form.reset();
+      setChannel("WHOLESALE");
+      setCustomerId("");
+      setLines([newLine()]);
+      setSaving(false);
       router.push(ROUTES.orderDetail(order.id));
     } catch (err) {
       setError(err);

@@ -47,7 +47,8 @@ function PurchaseOrderForm({ products, preselected }: { products: InventoryItem[
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
+    const form = event.currentTarget; // currentTarget is null after the await below
+    const data = new FormData(form);
     setSaving(true);
     setError(null);
     try {
@@ -58,6 +59,11 @@ function PurchaseOrderForm({ products, preselected }: { products: InventoryItem[
         items: lines.filter((l) => l.productId !== "").map((l) => ({ productId: Number(l.productId), qty: l.qty })),
       });
       toast.success(`${po.code} created`);
+      // Cache Components keep this page alive (hidden) after navigating away, state included:
+      // reset it so the next "New PO" visit is a blank form, not a stuck "Saving...".
+      form.reset();
+      setLines([{ key: lineKey++, productId: "", qty: 1 }]);
+      setSaving(false);
       router.push(ROUTES.purchaseOrderDetail(po.id));
     } catch (err) {
       setError(err);

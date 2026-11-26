@@ -75,6 +75,8 @@ export function OrderDetailPage() {
     try {
       const invoice = await orderService.issueInvoice(o.id);
       toast.success(`Invoice ${invoice.invoiceNo} ready`);
+      // this page stays alive (hidden) after navigating - don't leave the button busy for the way back
+      setBusy(null);
       router.push(ROUTES.invoice(invoice.id));
     } catch (err) {
       setActionError(err);
