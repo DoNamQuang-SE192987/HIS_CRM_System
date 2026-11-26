@@ -14,10 +14,12 @@ interface FormFieldProps {
   /** Validation message from the API (fieldErrors[field]). */
   error?: string;
   hint?: string;
+  /** Non-blocking advice shown in place of the hint (the form can still be submitted). */
+  warning?: string;
   required?: boolean;
 }
 
-export function FormField({ label, htmlFor, children, error, hint, required }: FormFieldProps) {
+export function FormField({ label, htmlFor, children, error, hint, warning, required }: FormFieldProps) {
   return (
     <div className="flex flex-col gap-1">
       <label className="font-label-md text-label-md text-on-surface" htmlFor={htmlFor}>
@@ -27,6 +29,10 @@ export function FormField({ label, htmlFor, children, error, hint, required }: F
       {children}
       {error ? (
         <span className="font-label-sm text-label-sm text-error">{error}</span>
+      ) : warning ? (
+        <span className="font-label-sm text-label-sm text-amber-800" role="status">
+          {warning}
+        </span>
       ) : (
         hint && <span className="font-label-sm text-label-sm text-secondary">{hint}</span>
       )}

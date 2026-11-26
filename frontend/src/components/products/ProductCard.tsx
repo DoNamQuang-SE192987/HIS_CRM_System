@@ -56,7 +56,7 @@ export function ProductCard({ product, onEdit, onToggle, toggling }: ProductCard
           <div className="flex items-center gap-space-xs text-secondary mt-space-xs">
             <Icon name="inventory" className="text-[16px]" />
             <span className="font-body-sm text-body-sm">
-              {product.packDescription ?? product.packSize ?? "—"} · {product.unitsPerCarton} units/{unit}
+              {product.packDescription ?? product.packSize ?? "—"} · {product.unitsPerCarton} units/carton
             </span>
           </div>
         </div>

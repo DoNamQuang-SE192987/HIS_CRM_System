@@ -15,12 +15,31 @@ interface ProductFormModalProps {
   onSaved: (product: Product) => void;
 }
 
+/**
+ * Count at the end of a pack size such as "500g x 12" or "20 sticks × 35" (-> 12, 35).
+ * null when the text does not end in "x <number>", so free-form pack sizes are never flagged.
+ */
+function cartonCountOf(packSize: string): number | null {
+  const match = /[x×*]\s*(\d+)\s*$/i.exec(packSize.trim());
+  return match ? Number(match[1]) : null;
+}
+
 /** Add / edit a catalogue product. Stock is only editable as the opening balance on create. */
 export function ProductFormModal({ product, onClose, onSaved }: ProductFormModalProps) {
   const editing = product !== null;
   const [error, setError] = useState<unknown>(null);
   const [saving, setSaving] = useState(false);
   const fieldErrors = fieldErrorsOf(error);
+
+  // Only to warn when "Pack size" and "Units per carton" disagree; saving is never blocked.
+  const [packSize, setPackSize] = useState(product?.packSize ?? "");
+  const [unitsPerCarton, setUnitsPerCarton] = useState(String(product?.unitsPerCarton ?? 12));
+  const packCount = cartonCountOf(packSize);
+  const units = Number(unitsPerCarton);
+  const unitsWarning =
+    packCount !== null && units > 0 && packCount !== units
+      ? `Pack size says x ${packCount} - check this number`
+      : undefined;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -78,16 +97,29 @@ export function ProductFormModal({ product, onClose, onSaved }: ProductFormModal
             <input id="p-brand" name="brand" className={FORM_CONTROL_CLASS} defaultValue={product?.brand ?? ""} />
           </FormField>
           <FormField label="Pack size" htmlFor="p-pack" hint="e.g. 500g x 12" error={fieldErrors.packSize}>
-            <input id="p-pack" name="packSize" className={FORM_CONTROL_CLASS} defaultValue={product?.packSize ?? ""} />
+            <input
+              id="p-pack"
+              name="packSize"
+              className={FORM_CONTROL_CLASS}
+              value={packSize}
+              onChange={(event) => setPackSize(event.target.value)}
+            />
           </FormField>
-          <FormField label="Units per carton" htmlFor="p-units" required error={fieldErrors.unitsPerCarton}>
+          <FormField
+            label="Units per carton"
+            htmlFor="p-units"
+            required
+            error={fieldErrors.unitsPerCarton}
+            warning={unitsWarning}
+          >
             <input
               id="p-units"
               name="unitsPerCarton"
               type="number"
               min={1}
               className={FORM_CONTROL_CLASS}
-              defaultValue={product?.unitsPerCarton ?? 12}
+              value={unitsPerCarton}
+              onChange={(event) => setUnitsPerCarton(event.target.value)}
               required
             />
           </FormField>
