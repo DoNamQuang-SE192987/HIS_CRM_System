@@ -37,7 +37,10 @@ export function InventoryPage() {
       (!q || item.sku.toLowerCase().includes(q) || item.name.toLowerCase().includes(q)),
   );
   const count = (s: StockStatus) => items.filter((item) => item.status === s).length;
-  const reorderIds = visible.filter((item) => item.status !== "IN_STOCK" && item.active).map((item) => item.productId);
+  // LOW / OUT, or IN_STOCK but not enough for the orders waiting to ship
+  const reorderIds = visible
+    .filter((item) => (item.status !== "IN_STOCK" || item.shortage > 0) && item.active)
+    .map((item) => item.productId);
 
   const afterChange = () => {
     setModal(null);
@@ -139,7 +142,12 @@ export function InventoryPage() {
                         <th className="px-space-md">Product</th>
                         <th className="px-space-md text-right w-32">On hand</th>
                         <th className="px-space-md text-right w-32">Minimum</th>
-                        <th className="px-space-md text-right w-28">Need</th>
+                        <th className="px-space-md text-right w-28" title="Units on NEW orders, sold but not shipped yet">
+                          To ship
+                        </th>
+                        <th className="px-space-md text-right w-28" title="To ship + Minimum - On hand: units to buy">
+                          Need
+                        </th>
                         <th className="px-space-md text-center w-32">Status</th>
                       </tr>
                     </thead>
@@ -158,13 +166,21 @@ export function InventoryPage() {
                             {item.stockQty} <span className="text-secondary font-normal">{item.unit === "BAG" ? "bags" : "ctns"}</span>
                           </td>
                           <td className="px-space-md text-right font-data-mono text-data-mono text-secondary">{item.minStock}</td>
-                          <td className="px-space-md text-right font-data-mono text-data-mono">{item.shortage || "—"}</td>
+                          <td className="px-space-md text-right font-data-mono text-data-mono">{item.committedQty || "—"}</td>
+                          <td
+                            className={cn(
+                              "px-space-md text-right font-data-mono text-data-mono",
+                              item.shortage > 0 && "font-semibold text-amber-800",
+                            )}
+                          >
+                            {item.shortage || "—"}
+                          </td>
                           <td className="px-space-md text-center">
                             <StockStatusBadge status={item.status} />
                           </td>
                         </tr>
                       ))}
-                      {visible.length === 0 && <EmptyRow colSpan={6}>No items match your filter.</EmptyRow>}
+                      {visible.length === 0 && <EmptyRow colSpan={7}>No items match your filter.</EmptyRow>}
                     </tbody>
                   </table>
                 </div>

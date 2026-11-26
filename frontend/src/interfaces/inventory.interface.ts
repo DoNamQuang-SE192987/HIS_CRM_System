@@ -12,8 +12,10 @@ export interface InventoryItem {
   unit: PriceUnit;
   stockQty: number;
   minStock: number;
+  /** Units on NEW orders: sold, waiting to ship. */
+  committedQty: number;
   status: StockStatus;
-  /** Units missing to reach minStock - reorder hint. */
+  /** Units to buy so open orders can ship and minStock is left: max(0, committed + min - stock). Reorder hint. */
   shortage: number;
   active: boolean;
 }

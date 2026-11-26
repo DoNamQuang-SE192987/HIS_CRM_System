@@ -25,6 +25,7 @@ import org.quangdn.his_crm_system.repository.InventoryTransactionRepository;
 import org.quangdn.his_crm_system.repository.InventoryTransactionSpecifications;
 import org.quangdn.his_crm_system.repository.ProductRepository;
 import org.quangdn.his_crm_system.repository.ProductSpecifications;
+import org.quangdn.his_crm_system.repository.SalesOrderRepository;
 import org.quangdn.his_crm_system.service.InventoryService;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -49,15 +50,17 @@ public class InventoryServiceImpl implements InventoryService {
 
     private final ProductRepository productRepository;
     private final InventoryTransactionRepository transactionRepository;
+    private final SalesOrderRepository orderRepository;
     private final Clock clock;
 
     // ---------------------------------------------------------------- warehouse screens
 
     @Override
     public List<InventoryItemResponse> list(String q, StockStatus status) {
+        Map<Long, Integer> committed = orderRepository.committedQtyByProduct();
         return productRepository.findAll(ProductSpecifications.filter(new ProductFilter(q, null, status, null)),
                         Sort.by("sku")).stream()
-                .map(InventoryItemResponse::from)
+                .map(p -> InventoryItemResponse.from(p, committed.getOrDefault(p.getId(), 0)))
                 .toList();
     }
 

@@ -18,7 +18,9 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long>, JpaSpecificationExecutor<SalesOrder> {
 
@@ -41,6 +43,21 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long>, J
     Optional<SalesOrder> findByIdForUpdate(@Param("id") Long id);
 
     Optional<SalesOrder> findByChannelAndExternalOrderNo(SalesChannel channel, String externalOrderNo);
+
+    // ---------------------------------------------------------------- inventory
+
+    /** Rows of [Long productId, Long qty]: units on NEW orders, i.e. sold but not shipped yet. */
+    @Query("""
+            select i.product.id, sum(i.qty) from OrderItem i
+            where i.order.status = org.quangdn.his_crm_system.enums.OrderStatus.NEW
+            group by i.product.id""")
+    List<Object[]> sumQtyOnNewOrdersByProduct();
+
+    /** productId -> units committed to NEW orders (products without open orders are absent = 0). */
+    default Map<Long, Integer> committedQtyByProduct() {
+        return sumQtyOnNewOrdersByProduct().stream()
+                .collect(Collectors.toMap(row -> (Long) row[0], row -> ((Number) row[1]).intValue()));
+    }
 
     // ---------------------------------------------------------------- dashboard
 

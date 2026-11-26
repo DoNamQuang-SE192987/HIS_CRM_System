@@ -56,12 +56,14 @@ public class DashboardServiceImpl implements DashboardService {
         Instant nextMonthStart = today.withDayOfMonth(1).plusMonths(1).atStartOfDay(zone).toInstant();
         BigDecimal revenue = orderRepository.sumShippedRevenue(monthStart, nextMonthStart);
 
-        // active products needing a reorder: OUT first, then the biggest gap to minStock
+        // active products needing a reorder (LOW / OUT, or not enough for open orders):
+        // OUT first, then the biggest shortage
+        Map<Long, Integer> committed = orderRepository.committedQtyByProduct();
         List<InventoryItemResponse> lowStock = productRepository
                 .findAll(ProductSpecifications.filter(new ProductFilter(null, null, null, true)))
                 .stream()
-                .filter(p -> p.getStockStatus() != StockStatus.IN_STOCK)
-                .map(InventoryItemResponse::from)
+                .map(p -> InventoryItemResponse.from(p, committed.getOrDefault(p.getId(), 0)))
+                .filter(InventoryItemResponse::needsReorder)
                 .sorted(Comparator.comparing((InventoryItemResponse i) -> i.status() != StockStatus.OUT)
                         .thenComparing(InventoryItemResponse::shortage, Comparator.reverseOrder()))
                 .toList();

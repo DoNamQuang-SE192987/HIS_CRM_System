@@ -73,6 +73,33 @@ class InventoryControllerTest {
     }
 
     @Test
+    void list_countsOnlyNewOrdersAsCommittedAndAddsThemToShortage() throws Exception {
+        Customer customer = new Customer();
+        customer.setName("Pacific Harvest Foods");
+        customer.setAddress("Oakland, CA");
+        Long customerId = customerRepository.save(customer).getId();
+
+        // noodle: 100 on hand, min 40. Two NEW orders (90 + 30), one shipped (10), one canceled (500).
+        Long shipped = createOrder(customerId, noodleId, 10);
+        mvc.perform(post("/orders/{id}/ship", shipped).header(ROLE, "WAREHOUSE")).andExpect(status().isOk());
+        Long canceled = createOrder(customerId, noodleId, 500);
+        mvc.perform(post("/orders/{id}/cancel", canceled).header(ROLE, "SALES")).andExpect(status().isOk());
+        createOrder(customerId, noodleId, 90);
+        createOrder(customerId, noodleId, 30);
+
+        // after the shipment: 90 on hand, 120 committed -> 120 + 40 - 90 = 70 to buy, though status is still IN_STOCK
+        mvc.perform(get("/inventory").header(ROLE, "WAREHOUSE"))
+                .andExpect(jsonPath("$[2].sku").value("LNS264"))
+                .andExpect(jsonPath("$[2].stockQty").value(90))
+                .andExpect(jsonPath("$[2].committedQty").value(120))
+                .andExpect(jsonPath("$[2].status").value("IN_STOCK"))
+                .andExpect(jsonPath("$[2].shortage").value(70))
+                // no open orders -> committed 0, shortage is just the gap to minStock
+                .andExpect(jsonPath("$[1].committedQty").value(0))
+                .andExpect(jsonPath("$[1].shortage").value(35));
+    }
+
+    @Test
     void openingStock_isBookedInTheLedger() throws Exception {
         mvc.perform(get("/inventory/transactions").param("productId", noodleId.toString()).header(ROLE, "WAREHOUSE"))
                 .andExpect(jsonPath("$.totalItems").value(1))
@@ -239,6 +266,13 @@ class InventoryControllerTest {
                 .content("""
                         {"sku":"%s","name":"%s","unitsPerCarton":12,"price":10,"minStock":%d,"stockQty":%d}
                         """.formatted(sku, name, minStock, openingStock))));
+    }
+
+    private Long createOrder(Long customerId, Long productId, int qty) throws Exception {
+        return idOf(mvc.perform(post("/orders").header(ROLE, "SALES").contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"channel":"WHOLESALE","customerId":%d,"items":[{"productId":%d,"qty":%d}]}
+                        """.formatted(customerId, productId, qty))));
     }
 
     private int stock(Long productId) {

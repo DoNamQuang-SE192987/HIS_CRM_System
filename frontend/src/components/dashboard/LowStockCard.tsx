@@ -65,6 +65,9 @@ export function LowStockCard({ products, totalCount }: LowStockCardProps) {
               <th className="py-3 px-3 font-semibold">Product &amp; SKU</th>
               <th className="py-3 px-3 font-semibold text-right">Stock</th>
               <th className="py-3 px-3 font-semibold text-right">Min</th>
+              <th className="py-3 px-3 font-semibold text-right" title="Units on NEW orders, sold but not shipped yet">
+                To ship
+              </th>
               <th className="py-3 px-3 font-semibold text-right">Need</th>
               <th className="py-3 px-6 font-semibold text-center">Status</th>
             </tr>
@@ -90,23 +93,31 @@ export function LowStockCard({ products, totalCount }: LowStockCardProps) {
                     </span>
                   </div>
                 </td>
-                <td className="py-3 px-3 text-right font-data-mono text-data-mono font-semibold text-error">
+                <td
+                  className={cn(
+                    "py-3 px-3 text-right font-data-mono text-data-mono font-semibold",
+                    product.status !== "IN_STOCK" && "text-error",
+                  )}
+                >
                   {product.stockQty}
                 </td>
                 <td className="py-3 px-3 text-right font-data-mono text-data-mono text-secondary">{product.minStock}</td>
+                <td className="py-3 px-3 text-right font-data-mono text-data-mono">{product.committedQty || "—"}</td>
                 <td className="py-3 px-3 text-right font-data-mono text-data-mono font-semibold">{product.shortage}</td>
                 <td className="py-3 px-6 text-center">
                   <StockStatusBadge status={product.status} />
                 </td>
               </tr>
             ))}
-            {products.length === 0 && <EmptyRow colSpan={6}>All active products are above their minimum stock.</EmptyRow>}
+            {products.length === 0 && (
+              <EmptyRow colSpan={7}>All active products cover their open orders and minimum stock.</EmptyRow>
+            )}
           </tbody>
         </table>
       </div>
 
       <div className="px-6 py-3 bg-surface-container-low/40 flex items-center justify-between text-secondary font-label-sm text-label-sm">
-        <span>“Need” = units missing to reach the minimum (pre-filled on the PO)</span>
+        <span>“Need” = To ship + Min − Stock: units to buy (pre-filled on the PO)</span>
         <Link className="text-primary font-medium hover:underline flex items-center gap-1" href={ROUTES.inventory}>
           Open inventory
           <Icon name="arrow_forward" className="text-[14px]" />
