@@ -20,7 +20,7 @@ interface Line {
 
 let lineKey = 1;
 
-/** Suggested order qty: what is missing to reach minStock, at least 1. */
+/** Suggested order qty: the inventory shortage (open orders + minStock - stock), at least 1. */
 const suggestedQty = (item: InventoryItem | undefined) => Math.max(1, item?.shortage ?? 1);
 
 function PurchaseOrderForm({ products, preselected }: { products: InventoryItem[]; preselected: number[] }) {
@@ -99,7 +99,7 @@ function PurchaseOrderForm({ products, preselected }: { products: InventoryItem[
             <h2 className="font-headline-sm text-headline-sm text-on-surface">Items</h2>
             {preselected.length > 0 && (
               <span className="font-label-sm text-label-sm text-secondary">
-                Pre-filled from the low-stock list · qty = units needed to reach the minimum
+                Pre-filled from the low-stock list · qty = units needed for open orders + the minimum
               </span>
             )}
           </div>
